@@ -1,0 +1,17 @@
+:host {
+  display: block;
+}
+
+.navbar-fixed {
+  position: fixed !important;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1030;
+  background: #fff !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  transition: box-shadow 0.2s ease;
+  &:not(.navbar-expanded) {
+    backdrop-filter: saturate(180%) blur(10px);
+  }
+}

@@ -1,0 +1,107 @@
+<nav class="navbar navbar-expand-lg navbar-fixed">
+  <div class="container">
+    <a class="navbar-brand d-inline-flex gap-2 align-items-center lh-1" 
+       href="#" 
+       (click)="navigateToPage('/'); $event.preventDefault()">
+      <span class="text-primary">
+        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-book">
+          <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+          <path d="M3 19a9 9 0 0 1 9 0a9 9 0 0 1 9 0" />
+          <path d="M3 6a9 9 0 0 1 9 0a9 9 0 0 1 9 0" />
+          <path d="M3 6l0 13" />
+          <path d="M12 6l0 13" />
+          <path d="M21 6l0 13" />
+        </svg>
+      </span>
+      <span class="fw-bold">LearnHub</span>
+    </a>
+
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav mx-auto mb-2 mb-lg-0">
+        <li class="nav-item">
+          <a href="/" class="nav-link" [class.active]="isActiveRoute('/')"
+             (click)="navigateToPage('/'); $event.preventDefault()">Home</a>
+        </li>
+        <li class="nav-item">
+          <a href="/courses" class="nav-link" [class.active]="isActiveRoute('/courses')"
+             (click)="navigateToPage('/courses'); $event.preventDefault()">Courses</a>
+        </li>
+        <li class="nav-item">
+          <a href="/clubs" class="nav-link" [class.active]="isActiveRoute('/clubs')"
+             (click)="navigateToPage('/clubs'); $event.preventDefault()">Clubs</a>
+        </li>
+        <li class="nav-item">
+          <a href="/events" class="nav-link" [class.active]="isActiveRoute('/events')"
+             (click)="navigateToPage('/events'); $event.preventDefault()">Events</a>
+        </li>
+        <li class="nav-item">
+          <a href="/messenger" class="nav-link" [class.active]="isActiveRoute('/messenger')"
+             (click)="navigateToPage('/messenger'); $event.preventDefault()">Messenger</a>
+        </li>
+        <li class="nav-item">
+          <a href="/job-offers" class="nav-link" [class.active]="isActiveRoute('/job-offers')"
+             (click)="navigateToPage('/job-offers'); $event.preventDefault()">Jobs</a>
+        </li>
+        <li class="nav-item">
+          <a href="/quiz" class="nav-link" [class.active]="isActiveRoute('/quiz')"
+             (click)="navigateToPage('/quiz'); $event.preventDefault()">Quiz</a>
+        </li>
+        <li class="nav-item">
+          <a href="/payment" class="nav-link" [class.active]="isActiveRoute('/payment')"
+             (click)="navigateToPage('/payment'); $event.preventDefault()">Payment</a>
+        </li>
+        <li class="nav-item">
+          <a href="/feedback" class="nav-link" [class.active]="isActiveRoute('/feedback')"
+             (click)="navigateToPage('/feedback'); $event.preventDefault()">Feedback</a>
+        </li>
+        <li class="nav-item">
+          <a href="/certificate" class="nav-link" [class.active]="isActiveRoute('/certificate')"
+             (click)="navigateToPage('/certificate'); $event.preventDefault()">Certificate</a>
+        </li>
+        <li class="nav-item">
+          <a href="/schedule" class="nav-link" [class.active]="isActiveRoute('/schedule')"
+             (click)="navigateToPage('/schedule'); $event.preventDefault()">Schedule</a>
+        </li>
+
+
+        <li class="nav-item">
+
+           <!-- integ profile -->
+  <a href="/client/profile"
+     class="nav-link"
+     [class.active]="isActiveRoute('/client/profile')"
+     (click)="navigateToPage('/client/profile'); $event.preventDefault()">
+     Profil
+  </a>
+</li>
+
+      </ul>
+
+
+    
+    </div>
+
+<!-- session -->
+    <div class="d-flex gap-3 align-items-center">
+
+  <!-- Si user connecté -->
+  <div *ngIf="user" class="d-flex align-items-center gap-2">
+    <img [src]="getAvatar()" style="width:38px;height:38px;border-radius:50%;object-fit:cover;" />
+    <span class="fw-semibold">
+      {{ user.firstName }} {{ user.lastName }}
+    </span>
+  </div>
+
+  <!-- Si pas connecté -->
+  <button *ngIf="!user" type="button" class="btn btn-primary" (click)="onGetStarted()">
+    Get Started
+  </button>
+
+</div>
+
+  </div>
+</nav>
