@@ -1,0 +1,36 @@
+<div class="card p-3">
+  <h4>Add Admin</h4>
+
+  <form [formGroup]="form" (ngSubmit)="submit()">
+    <div class="mb-3">
+      <label>First name</label>
+      <input class="form-control" formControlName="firstName">
+    </div>
+
+    <div class="mb-3">
+      <label>Last name</label>
+      <input class="form-control" formControlName="lastName">
+    </div>
+
+    <div class="mb-3">
+      <label>Email</label>
+      <div class="input-group">
+        <input class="form-control" placeholder="ex: ahmed" formControlName="username">
+        <span class="input-group-text">{{ domain }}</span>
+      </div>
+      <small class="text-muted">Email final: {{ email }}</small>
+    </div>
+
+    <div class="mb-3">
+      <label>Password</label>
+      <input type="password" class="form-control" formControlName="password">
+    </div>
+
+    <div class="alert alert-success" *ngIf="msg">{{ msg }}</div>
+    <div class="alert alert-danger" *ngIf="err">{{ err }}</div>
+
+    <button class="btn btn-primary" [disabled]="loading">
+      {{ loading ? 'Creation...' : 'Create Admin' }}
+    </button>
+  </form>
+</div>
