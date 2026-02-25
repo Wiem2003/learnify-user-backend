@@ -6,8 +6,6 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
@@ -21,14 +19,11 @@ import java.util.List;
 public class SecurityConfig {
 
     private final JwtFilter jwtFilter;
+    private final OAuth2SuccessHandler oAuth2SuccessHandler;
 
-    public SecurityConfig(JwtFilter jwtFilter) {
+    public SecurityConfig(JwtFilter jwtFilter, OAuth2SuccessHandler oAuth2SuccessHandler) {
         this.jwtFilter = jwtFilter;
-    }
-
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
+        this.oAuth2SuccessHandler = oAuth2SuccessHandler;
     }
 
     @Bean
@@ -44,20 +39,32 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
 
-                        // ✅ auth
+                        // ✅ auth classique
                         .requestMatchers("/api/auth/**").permitAll()
 
-                        // ✅ fichiers upload (IMPORTANT sinon <img> => 403)
+                        // ✅ endpoint qu’on a créé pour choisir role (STUDENT/CANDIDATE)
+                        .requestMatchers("/oauth2/authorize/**").permitAll()
+
+                        // ✅ OAuth2 Google endpoints
+                        .requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
+
+                        // ✅ PASSKEY LOGIN (public)
+                        .requestMatchers("/api/webauthn/authenticate/**").permitAll()
+
+                        // ✅ fichiers upload
                         .requestMatchers("/uploads/**").permitAll()
 
                         // ADMIN
                         .requestMatchers("/api/users/admin/**").hasAuthority("ADMIN")
 
-                        // le reste auth
                         .anyRequest().authenticated()
                 )
+                // ⚠️ OAuth2 a besoin d'une session temporaire
                 .sessionManagement(session ->
-                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                        session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
+                )
+                .oauth2Login(oauth -> oauth
+                        .successHandler(oAuth2SuccessHandler)
                 );
 
         http.addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);

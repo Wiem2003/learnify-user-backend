@@ -33,11 +33,27 @@ public class JwtFilter extends OncePerRequestFilter {
 
         String path = request.getRequestURI();
 
-        // Autoriser OPTIONS et endpoints publics SANS JWT
-        if (request.getMethod().equalsIgnoreCase("OPTIONS") ||
-                path.startsWith("/api/auth/login") ||
-                path.startsWith("/api/auth/register")) {
+        boolean isPublic =
+                request.getMethod().equalsIgnoreCase("OPTIONS")
 
+                        // auth classique
+                        || path.startsWith("/api/auth/login")
+                        || path.startsWith("/api/auth/register")
+                        || path.startsWith("/api/auth/forgot-password")
+                        || path.startsWith("/api/auth/reset-password")
+
+                        // ✅ OAuth2 Google (IMPORTANT)
+                        || path.startsWith("/oauth2/")
+                        || path.startsWith("/login/oauth2/")
+
+                        // passkey
+                        || path.startsWith("/api/webauthn/authenticate/options")
+                        || path.startsWith("/api/webauthn/authenticate/verify")
+
+                        // uploads
+                        || path.startsWith("/uploads/");
+
+        if (isPublic) {
             filterChain.doFilter(request, response);
             return;
         }
@@ -53,7 +69,7 @@ public class JwtFilter extends OncePerRequestFilter {
             try {
                 email = jwtUtil.extractEmail(token);
             } catch (Exception e) {
-                System.out.println("Token invalide: " + e.getMessage());
+                System.out.println("Invalid token: " + e.getMessage());
             }
         }
 
@@ -70,9 +86,7 @@ public class JwtFilter extends OncePerRequestFilter {
                                 userDetails.getAuthorities()
                         );
 
-                authentication.setDetails(
-                        new WebAuthenticationDetailsSource().buildDetails(request)
-                );
+                authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
                 SecurityContextHolder.getContext().setAuthentication(authentication);
             }

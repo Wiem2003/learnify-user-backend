@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.*;
 import learnifyapp.userandpreevaluation.usermanagement.enums.Role;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import jakarta.persistence.Column;
+
 
 
 
@@ -37,6 +39,14 @@ public class User {
     private Role role;
 
     private String avatarUrl;
+
+
+
+    @Column(name = "app_pin_hash")
+    private String appPinHash;
+
+    public String getAppPinHash() { return appPinHash; }
+    public void setAppPinHash(String appPinHash) { this.appPinHash = appPinHash; }
 
 
 }

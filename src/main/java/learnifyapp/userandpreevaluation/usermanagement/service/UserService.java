@@ -1,23 +1,29 @@
 package learnifyapp.userandpreevaluation.usermanagement.service;
 
 import learnifyapp.userandpreevaluation.security.JwtUtil;
+import learnifyapp.userandpreevaluation.usermanagement.dto.ChangePasswordRequest;
 import learnifyapp.userandpreevaluation.usermanagement.dto.LoginResponse;
+import learnifyapp.userandpreevaluation.usermanagement.dto.NewDeviceInfo;
 import learnifyapp.userandpreevaluation.usermanagement.dto.RegisterRequest;
+import learnifyapp.userandpreevaluation.usermanagement.dto.UpdateProfileRequest;
+import learnifyapp.userandpreevaluation.usermanagement.entity.PasswordResetToken;
 import learnifyapp.userandpreevaluation.usermanagement.entity.User;
+import learnifyapp.userandpreevaluation.usermanagement.entity.UserSession;
 import learnifyapp.userandpreevaluation.usermanagement.enums.Role;
+import learnifyapp.userandpreevaluation.usermanagement.repository.KnownDeviceRepository;
+import learnifyapp.userandpreevaluation.usermanagement.repository.PasswordResetTokenRepository;
 import learnifyapp.userandpreevaluation.usermanagement.repository.UserRepository;
+import learnifyapp.userandpreevaluation.usermanagement.repository.UserSessionRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import learnifyapp.userandpreevaluation.usermanagement.dto.UpdateProfileRequest;
-import learnifyapp.userandpreevaluation.usermanagement.dto.ChangePasswordRequest;
-
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.transaction.annotation.Transactional;
+
 import java.nio.file.*;
-import java.util.UUID;
+import java.time.LocalDateTime;
 import java.util.List;
-
-
-
+import java.util.Random;
+import java.util.UUID;
 
 @Service
 public class UserService {
@@ -25,15 +31,34 @@ public class UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
+    private final EmailService emailService;
+    private final PasswordResetTokenRepository passwordResetTokenRepository;
+    private final UserSessionRepository userSessionRepository;
+    private final KnownDeviceRepository knownDeviceRepository; // ✅ NEW
+
+    // ✅ NEW: pour détecter nouveau device + mail
+    private final DeviceService deviceService;
 
     public UserService(UserRepository userRepository,
                        PasswordEncoder passwordEncoder,
-                       JwtUtil jwtUtil) {
+                       JwtUtil jwtUtil,
+                       EmailService emailService,
+                       PasswordResetTokenRepository passwordResetTokenRepository,
+                       UserSessionRepository userSessionRepository,
+                       DeviceService deviceService,
+                       KnownDeviceRepository knownDeviceRepository) { // ✅ NEW param
+
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtil = jwtUtil;
+        this.emailService = emailService;
+        this.passwordResetTokenRepository = passwordResetTokenRepository;
+        this.userSessionRepository = userSessionRepository;
+        this.deviceService = deviceService;
+        this.knownDeviceRepository = knownDeviceRepository; // ✅ NEW assign
     }
 
+    // ================= REGISTER STUDENT =================
     public User registerStudent(RegisterRequest request) {
 
         if (userRepository.existsByEmail(request.getEmail())) {
@@ -47,9 +72,18 @@ public class UserService {
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setRole(Role.STUDENT);
 
-        return userRepository.save(user);
+        User savedUser = userRepository.save(user);
+
+        try {
+            emailService.sendWelcomeEmail(savedUser.getEmail(), savedUser.getFirstName());
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return savedUser;
     }
 
+    // ================= REGISTER CANDIDATE =================
     public User registerCandidate(RegisterRequest request) {
 
         if (userRepository.existsByEmail(request.getEmail())) {
@@ -66,6 +100,7 @@ public class UserService {
         return userRepository.save(user);
     }
 
+    // ================= CREATE TUTOR =================
     public User createTutor(RegisterRequest request) {
 
         if (userRepository.existsByEmail(request.getEmail())) {
@@ -82,6 +117,7 @@ public class UserService {
         return userRepository.save(user);
     }
 
+    // ================= CREATE ADMIN =================
     public User createAdmin(RegisterRequest request) {
 
         if (userRepository.existsByEmail(request.getEmail())) {
@@ -98,7 +134,16 @@ public class UserService {
         return userRepository.save(user);
     }
 
-    public LoginResponse login(String email, String password, String role) {
+    // ================= LOGIN (MODIFIED) =================
+    public LoginResponse login(String email,
+                               String password,
+                               String role,
+                               String userAgent,
+                               String ip,
+                               String deviceId,
+                               String platform,
+                               String language,
+                               String timezone) {
 
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
@@ -107,12 +152,37 @@ public class UserService {
             throw new RuntimeException("Invalid credentials");
         }
 
-        // 🔥 VÉRIFICATION DU RÔLE
         if (!user.getRole().name().equalsIgnoreCase(role)) {
             throw new RuntimeException("Access denied: wrong space for this account");
         }
 
         String token = jwtUtil.generateToken(email, user.getRole().name());
+
+        // ✅ 1) save session (pour sessions actives)
+        UserSession s = new UserSession();
+        s.setUser(user);
+        s.setSessionId(UUID.randomUUID().toString());
+        s.setUserAgent(userAgent);
+        s.setIp(ip);
+        s.setBrowser(parseBrowser(userAgent));
+        s.setOs(parseOs(userAgent));
+        s.setCreatedAt(LocalDateTime.now());
+        s.setLastSeenAt(LocalDateTime.now());
+        s.setRevoked(false);
+
+        userSessionRepository.save(s);
+
+        // ✅ 2) detect new device + mail if new
+        NewDeviceInfo info = NewDeviceInfo.builder()
+                .deviceId(deviceId)
+                .userAgent(userAgent)
+                .platform(platform)
+                .language(language)
+                .timezone(timezone)
+                .ip(ip)
+                .build();
+
+        deviceService.registerOrUpdateAndNotify(user, info);
 
         return new LoginResponse(
                 token,
@@ -121,9 +191,85 @@ public class UserService {
         );
     }
 
+    private String parseBrowser(String ua) {
+        if (ua == null) return "Unknown";
+        String u = ua.toLowerCase();
+        if (u.contains("edg/")) return "Edge";
+        if (u.contains("chrome/")) return "Chrome";
+        if (u.contains("firefox/")) return "Firefox";
+        if (u.contains("safari/") && !u.contains("chrome/")) return "Safari";
+        return "Unknown";
+    }
 
+    private String parseOs(String ua) {
+        if (ua == null) return "Unknown";
+        String u = ua.toLowerCase();
+        if (u.contains("windows")) return "Windows";
+        if (u.contains("android")) return "Android";
+        if (u.contains("iphone") || u.contains("ipad") || u.contains("ios")) return "iOS";
+        if (u.contains("mac os") || u.contains("macintosh")) return "macOS";
+        if (u.contains("linux")) return "Linux";
+        return "Unknown";
+    }
 
+    // ================= FORGOT PASSWORD (SEND PIN) =================
+    public String forgotPassword(String email) {
 
+        User user = userRepository.findByEmail(email).orElse(null);
+        String genericMsg = "If this email exists, a PIN has been sent.";
+
+        if (user == null) {
+            return genericMsg;
+        }
+
+        String pin = String.format("%06d", new Random().nextInt(1_000_000));
+
+        PasswordResetToken token = new PasswordResetToken();
+        token.setEmail(email);
+        token.setPin(pin);
+        token.setExpiresAt(LocalDateTime.now().plusMinutes(10));
+        token.setUsed(false);
+
+        passwordResetTokenRepository.save(token);
+
+        try {
+            emailService.sendResetPinEmail(user.getEmail(), user.getFirstName(), pin);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return genericMsg;
+    }
+
+    // ================= RESET PASSWORD (VERIFY PIN + UPDATE PASSWORD) =================
+    public void resetPasswordWithPin(String email, String pin, String newPassword, String confirmNewPassword) {
+
+        if (newPassword == null || newPassword.length() < 6) {
+            throw new RuntimeException("New password must be at least 6 characters");
+        }
+        if (!newPassword.equals(confirmNewPassword)) {
+            throw new RuntimeException("Passwords do not match");
+        }
+
+        PasswordResetToken token = passwordResetTokenRepository
+                .findTopByEmailAndPinAndUsedFalseOrderByIdDesc(email, pin)
+                .orElseThrow(() -> new RuntimeException("Invalid PIN"));
+
+        if (token.getExpiresAt().isBefore(LocalDateTime.now())) {
+            throw new RuntimeException("PIN expired");
+        }
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+
+        token.setUsed(true);
+        passwordResetTokenRepository.save(token);
+    }
+
+    // ================= PROFILE =================
     public User getByEmail(String email) {
         return userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
@@ -162,13 +308,12 @@ public class UserService {
         userRepository.save(user);
     }
 
-
+    // ================= AVATAR =================
     public User uploadAvatar(String email, MultipartFile file) {
         if (file == null || file.isEmpty()) {
             throw new RuntimeException("File is empty");
         }
 
-        // sécurité: accepter uniquement images
         String contentType = file.getContentType();
         if (contentType == null || !(contentType.equals("image/png") || contentType.equals("image/jpeg") || contentType.equals("image/jpg"))) {
             throw new RuntimeException("Only PNG/JPG images are allowed");
@@ -189,7 +334,6 @@ public class UserService {
             Path targetPath = uploadDir.resolve(filename);
             Files.copy(file.getInputStream(), targetPath, StandardCopyOption.REPLACE_EXISTING);
 
-            // URL publique
             user.setAvatarUrl("/uploads/avatars/" + filename);
             return userRepository.save(user);
 
@@ -198,16 +342,46 @@ public class UserService {
         }
     }
 
-
     public List<User> getAllUsers() {
         return userRepository.findAll();
     }
 
+    // ✅ FINAL: delete sessions + known devices first, then delete user
+    @Transactional
     public void deleteUser(Long id) {
+
+        User u = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if ("admin@learnify.com".equalsIgnoreCase(u.getEmail())) {
+            throw new RuntimeException("Cannot delete system admin");
+        }
+
+        userSessionRepository.deleteAllByUserId(id);
+        knownDeviceRepository.deleteAllByUserId(id);
+
         userRepository.deleteById(id);
     }
 
+    public List<UserSession> getSessionsForUser(String email) {
+        User user = getByEmail(email);
+        return userSessionRepository.findByUserIdOrderByLastSeenAtDesc(user.getId());
+    }
 
+    public void createSessionFor(String email, String userAgent, String ip) {
+        User user = getByEmail(email);
 
+        UserSession s = new UserSession();
+        s.setUser(user);
+        s.setSessionId(UUID.randomUUID().toString());
+        s.setUserAgent(userAgent);
+        s.setIp(ip);
+        s.setBrowser(parseBrowser(userAgent));
+        s.setOs(parseOs(userAgent));
+        s.setCreatedAt(LocalDateTime.now());
+        s.setLastSeenAt(LocalDateTime.now());
+        s.setRevoked(false);
 
+        userSessionRepository.save(s);
+    }
 }
