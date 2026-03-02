@@ -57,9 +57,10 @@ public class UserController {
     }
 
     @PutMapping("/me/password")
-    public void changeMyPassword(@AuthenticationPrincipal UserDetails userDetails,
-                                 @RequestBody ChangePasswordRequest request) {
+    public ResponseEntity<?> changeMyPassword(@AuthenticationPrincipal UserDetails userDetails,
+                                              @RequestBody ChangePasswordRequest request) {
         userService.changePassword(userDetails.getUsername(), request);
+        return ResponseEntity.ok(Map.of("message", "Password updated successfully"));
     }
 
 

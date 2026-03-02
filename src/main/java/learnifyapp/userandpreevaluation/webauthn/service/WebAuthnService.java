@@ -4,20 +4,17 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.yubico.webauthn.*;
 import com.yubico.webauthn.data.*;
-
 import learnifyapp.userandpreevaluation.security.JwtUtil;
 import learnifyapp.userandpreevaluation.usermanagement.entity.User;
 import learnifyapp.userandpreevaluation.usermanagement.repository.UserRepository;
 import learnifyapp.userandpreevaluation.webauthn.entity.WebAuthnCredential;
 import learnifyapp.userandpreevaluation.webauthn.repository.WebAuthnCredentialRepository;
-
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-import com.yubico.webauthn.data.AttestationConveyancePreference;
 
 @Service
 public class WebAuthnService {
@@ -60,7 +57,6 @@ public class WebAuthnService {
             if (extObj instanceof Map<?, ?>) {
                 Map<String, Object> ext = (Map<String, Object>) extObj;
 
-                // remove legacy U2F extensions that cause browser errors
                 ext.remove("appidExclude");
                 ext.remove("appid");
 
@@ -70,7 +66,6 @@ public class WebAuthnService {
 
             return mapper.writeValueAsString(map);
         } catch (Exception e) {
-            // fallback: return original json
             return json;
         }
     }
@@ -100,20 +95,20 @@ public class WebAuthnService {
                 .id(userHandle)
                 .build();
 
+        // ✅ IMPORTANT: REQUIRED => pour que le login "discover" propose le compte
         StartRegistrationOptions startOpts = StartRegistrationOptions.builder()
                 .user(userIdentity)
                 .authenticatorSelection(AuthenticatorSelectionCriteria.builder()
-                        .residentKey(ResidentKeyRequirement.PREFERRED)
+                        .residentKey(ResidentKeyRequirement.REQUIRED)
                         .userVerification(UserVerificationRequirement.PREFERRED)
                         .build())
-                // ✅ pas de attestationConveyancePreference ici (pas supporté par ta version)
                 .build();
+
         PublicKeyCredentialCreationOptions pkOptions = rp.startRegistration(startOpts);
 
         String requestId = UUID.randomUUID().toString();
         pendingReg.put(requestId, new PendingReg(email, pkOptions));
 
-        // ✅ send standard WebAuthn JSON (browser-friendly)
         final String publicKeyJson;
         try {
             publicKeyJson = sanitizeJsonExtensions(pkOptions.toCredentialsCreateJson());
@@ -132,12 +127,7 @@ public class WebAuthnService {
         PendingReg pending = pendingReg.remove(requestId);
         if (pending == null) throw new RuntimeException("Registration request expired");
 
-        String credentialJson;
-        try {
-            credentialJson = mapper.writeValueAsString(credentialObj);
-        } catch (Exception e) {
-            throw new RuntimeException("Invalid credential payload", e);
-        }
+        String credentialJson = mapper.writeValueAsString(credentialObj);
 
         PublicKeyCredential<AuthenticatorAttestationResponse, ClientRegistrationExtensionOutputs> pkc =
                 PublicKeyCredential.parseRegistrationResponseJson(credentialJson);
@@ -162,16 +152,27 @@ public class WebAuthnService {
     }
 
     // =========================================================
-    // LOGIN (without email/password)
+    // LOGIN 1) username-first (email obligatoire) => filtré
     // =========================================================
-    public Map<String, Object> startAssertion() {
+    public Map<String, Object> startAssertion(String email) {
 
-        AssertionRequest request = rp.startAssertion(StartAssertionOptions.builder().build());
+        User user = userRepo.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (credRepo.findAllByUserId(user.getId()).isEmpty()) {
+            throw new IllegalArgumentException("No passkey registered for this account");
+        }
+
+        AssertionRequest request = rp.startAssertion(
+                StartAssertionOptions.builder()
+                        .username(email)
+                        .userVerification(UserVerificationRequirement.PREFERRED)
+                        .build()
+        );
 
         String requestId = UUID.randomUUID().toString();
         pendingAuth.put(requestId, new PendingAuth(request));
 
-        // ✅ send standard WebAuthn JSON (browser-friendly)
         final String publicKeyJson;
         try {
             publicKeyJson = sanitizeJsonExtensions(
@@ -187,17 +188,44 @@ public class WebAuthnService {
         );
     }
 
+    // =========================================================
+    // LOGIN 2) discover (sans email) => choisit le compte
+    // =========================================================
+    public Map<String, Object> startAssertionDiscover() {
+
+        AssertionRequest request = rp.startAssertion(
+                StartAssertionOptions.builder()
+                        .userVerification(UserVerificationRequirement.PREFERRED)
+                        .build()
+        );
+
+        String requestId = UUID.randomUUID().toString();
+        pendingAuth.put(requestId, new PendingAuth(request));
+
+        final String publicKeyJson;
+        try {
+            publicKeyJson = sanitizeJsonExtensions(
+                    request.getPublicKeyCredentialRequestOptions().toCredentialsGetJson()
+            );
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("Cannot serialize WebAuthn get options", e);
+        }
+
+        return Map.of(
+                "requestId", requestId,
+                "publicKey", jsonToMap(publicKeyJson)
+        );
+    }
+
+    // =========================================================
+    // VERIFY LOGIN + ISSUE JWT
+    // =========================================================
     public String finishAssertionAndIssueJwt(String requestId, Object credentialObj) throws Exception {
 
         PendingAuth pending = pendingAuth.remove(requestId);
         if (pending == null) throw new RuntimeException("Auth request expired");
 
-        String credentialJson;
-        try {
-            credentialJson = mapper.writeValueAsString(credentialObj);
-        } catch (Exception e) {
-            throw new RuntimeException("Invalid credential payload", e);
-        }
+        String credentialJson = mapper.writeValueAsString(credentialObj);
 
         PublicKeyCredential<AuthenticatorAssertionResponse, ClientAssertionExtensionOutputs> pkc =
                 PublicKeyCredential.parseAssertionResponseJson(credentialJson);
@@ -213,17 +241,16 @@ public class WebAuthnService {
             throw new RuntimeException("Passkey login failed");
         }
 
-        // ✅ deprecated fix: take credentialId from result.getCredential()
         byte[] credId = result.getCredential().getCredentialId().getBytes();
 
-        // (recommandé) update signatureCount in DB
-        credRepo.findByCredentialId(credId).ifPresent(dbCred -> {
-            dbCred.setSignatureCount(result.getSignatureCount());
-            credRepo.save(dbCred);
-        });
+        WebAuthnCredential dbCred = credRepo.findByCredentialId(credId)
+                .orElseThrow(() -> new RuntimeException("Unknown credential"));
 
-        String email = result.getUsername();
-        User user = userRepo.findByEmail(email).orElseThrow(() -> new RuntimeException("User not found"));
+        dbCred.setSignatureCount(result.getSignatureCount());
+        credRepo.save(dbCred);
+
+        User user = userRepo.findById(dbCred.getUserId())
+                .orElseThrow(() -> new RuntimeException("User not found"));
 
         return jwtUtil.generateToken(user.getEmail(), user.getRole().name());
     }

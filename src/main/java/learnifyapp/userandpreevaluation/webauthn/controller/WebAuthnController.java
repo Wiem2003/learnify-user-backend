@@ -35,9 +35,21 @@ public class WebAuthnController {
     }
 
     // ===== Login (public) =====
+
+    // 1) username-first (email obligatoire) => filtré
     @PostMapping("/authenticate/options")
-    public Map<String, Object> authenticateOptions() {
-        return service.startAssertion();
+    public Map<String, Object> authenticateOptions(@RequestBody Map<String, Object> body) {
+        String email = (String) body.get("email");
+        if (email == null || email.isBlank()) {
+            throw new IllegalArgumentException("email is required");
+        }
+        return service.startAssertion(email);
+    }
+
+    // 2) discover (sans email) => choisit le compte/passkey
+    @PostMapping("/authenticate/options/discover")
+    public Map<String, Object> authenticateOptionsDiscover() {
+        return service.startAssertionDiscover();
     }
 
     @PostMapping("/authenticate/verify")

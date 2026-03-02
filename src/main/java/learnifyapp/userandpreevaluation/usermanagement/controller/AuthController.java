@@ -7,9 +7,12 @@ import learnifyapp.userandpreevaluation.usermanagement.dto.LoginResponse;
 import learnifyapp.userandpreevaluation.usermanagement.dto.RegisterRequest;
 import learnifyapp.userandpreevaluation.usermanagement.dto.ResetPasswordRequest;
 import learnifyapp.userandpreevaluation.usermanagement.entity.User;
+import learnifyapp.userandpreevaluation.usermanagement.exception.DeviceConfirmationRequiredException;
 import learnifyapp.userandpreevaluation.usermanagement.service.UserService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -35,7 +38,7 @@ public class AuthController {
 
     // ================= LOGIN =================
     @PostMapping("/login")
-    public LoginResponse login(@RequestBody LoginRequest request, HttpServletRequest httpRequest) {
+    public ResponseEntity<?> login(@RequestBody LoginRequest request, HttpServletRequest httpRequest) {
 
         // ✅ IP (X-Forwarded-For si proxy plus tard)
         String ip = httpRequest.getHeader("X-Forwarded-For");
@@ -52,18 +55,29 @@ public class AuthController {
                 ? request.getUserAgent()
                 : httpRequest.getHeader("User-Agent");
 
-        // ✅ On passe deviceId + infos device au login
-        return userService.login(
-                request.getEmail(),
-                request.getPassword(),
-                request.getRole(),
-                userAgent,
-                ip,
-                request.getDeviceId(),
-                request.getPlatform(),
-                request.getLanguage(),
-                request.getTimezone()
-        );
+        try {
+            // ✅ On passe deviceId + infos device au login
+            LoginResponse res = userService.login(
+                    request.getEmail(),
+                    request.getPassword(),
+                    request.getRole(),
+                    userAgent,
+                    ip,
+                    request.getDeviceId(),
+                    request.getPlatform(),
+                    request.getLanguage(),
+                    request.getTimezone()
+            );
+
+            return ResponseEntity.ok(res);
+
+        } catch (DeviceConfirmationRequiredException ex) {
+            // ✅ PENDING => on renvoie token au frontend (pour /auth/device-pending?token=...)
+            return ResponseEntity.status(403).body(Map.of(
+                    "pending", true,
+                    "token", ex.getToken()
+            ));
+        }
     }
 
     // ================= FORGOT PASSWORD (send PIN) =================

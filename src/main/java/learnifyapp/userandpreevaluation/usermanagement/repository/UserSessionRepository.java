@@ -15,7 +15,10 @@ public interface UserSessionRepository extends JpaRepository<UserSession, Long> 
 
     Optional<UserSession> findBySessionId(String sessionId);
 
-    // ✅ NEW: delete all sessions for a user (important before deleting the user)
+    // ✅ NEW: vérifier s'il existe une session active (revoked = false)
+    boolean existsByUserIdAndRevokedFalse(Long userId);
+
+    // ✅ delete all sessions for a user (important before deleting the user)
     @Modifying
     @Transactional
     @Query("delete from UserSession s where s.user.id = :userId")

@@ -2,17 +2,14 @@ package learnifyapp.userandpreevaluation.usermanagement.service;
 
 import com.sendgrid.*;
 import com.sendgrid.helpers.mail.Mail;
-import com.sendgrid.helpers.mail.objects.Attachments;
 import com.sendgrid.helpers.mail.objects.Content;
 import com.sendgrid.helpers.mail.objects.Email;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
-import java.io.InputStream;
-import java.net.URL;
-import java.util.Base64;
-
-// ✅ NEW imports (date/heure)
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -20,165 +17,128 @@ import java.time.format.DateTimeFormatter;
 @Service
 public class EmailService {
 
+    private static final Logger logger = LoggerFactory.getLogger(EmailService.class);
+
     @Value("${sendgrid.api-key}")
     private String apiKey;
 
     @Value("${sendgrid.from}")
     private String fromEmail;
 
+    // ✅ Optionnel : lien logo (pas de téléchargement). Laisse vide si tu veux juste du texte.
+    // Exemple: https://learnify.com/assets/logo.png
+    @Value("${learnify.logo-url:}")
+    private String logoUrl;
+
+    @Value("${learnify.app-url:http://localhost:4200}")
+    private String appUrl;
+
+    // ==================== PUBLIC METHODS (ASYNC) ====================
+
+    @Async
     public void sendWelcomeEmail(String to, String name) {
-        try {
-            Email from = new Email(fromEmail);
-            Email toEmail = new Email(to);
+        String subject = "Welcome to Learnify 🎉";
+        String safeName = safe(name, "User");
 
-            String subject = "Welcome to Learnify 🎉";
+        String html =
+                wrapEmail(
+                        headerBlock("Welcome " + escapeHtml(safeName) + " 👋") +
+                                "<p style='font-size:15px; color:#555;'>Your student account has been successfully created.</p>" +
+                                "<p style='font-size:15px; color:#555;'>You can now log in and start using the platform.</p>" +
+                                button(appUrl + "/login", "Go to Learnify") +
+                                footerBlock("© Learnify - All rights reserved")
+                );
 
-            // ✅ Logo URL (Imgur)
-            String logoUrl = "https://i.imgur.com/kFYblvw.jpeg";
-
-            // ✅ We'll embed it inline with CID
-            String cid = "learnify-logo";
-
-            String html =
-                    "<div style='font-family: Arial, sans-serif; max-width:600px; margin:auto; border:1px solid #eee; padding:20px;'>" +
-                            "  <div style='text-align:center; margin-bottom:20px;'>" +
-                            "    <img src='cid:" + cid + "' alt='Learnify Logo' style='max-width:200px; height:auto;'/>" +
-                            "  </div>" +
-                            "  <h2 style='color:#333;'>Welcome " + name + " 👋</h2>" +
-                            "  <p style='font-size:15px; color:#555;'>Your student account has been successfully created.</p>" +
-                            "  <p style='font-size:15px; color:#555;'>You can now log in and start using the platform.</p>" +
-                            "  <div style='text-align:center; margin:30px 0;'>" +
-                            "    <a href='http://localhost:4200/login' " +
-                            "       style='background-color:#4CAF50; color:white; padding:12px 20px; text-decoration:none; border-radius:5px; font-weight:bold;'>" +
-                            "       Go to Learnify" +
-                            "    </a>" +
-                            "  </div>" +
-                            "  <p style='font-size:12px; color:#999; text-align:center;'>© Learnify - All rights reserved</p>" +
-                            "</div>";
-
-            Content content = new Content("text/html", html);
-            Mail mail = new Mail(from, subject, toEmail, content);
-
-            // ✅ Download image and attach inline
-            Attachments logoAttachment = new Attachments();
-            logoAttachment.setType("image/jpeg");
-            logoAttachment.setFilename("logo.jpeg");
-            logoAttachment.setDisposition("inline");
-            logoAttachment.setContentId(cid);
-
-            byte[] imageBytes = downloadBytes(logoUrl);
-            String base64 = Base64.getEncoder().encodeToString(imageBytes);
-            logoAttachment.setContent(base64);
-
-            mail.addAttachments(logoAttachment);
-
-            SendGrid sg = new SendGrid(apiKey);
-            Request request = new Request();
-            request.setMethod(Method.POST);
-            request.setEndpoint("mail/send");
-            request.setBody(mail.build());
-
-            Response response = sg.api(request);
-
-            if (response.getStatusCode() >= 400) {
-                throw new RuntimeException("SendGrid error: " + response.getStatusCode()
-                        + " body=" + response.getBody());
-            }
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        sendHtml(to, subject, html, "sendWelcomeEmail");
     }
 
-    private byte[] downloadBytes(String url) throws Exception {
-        try (InputStream in = new URL(url).openStream()) {
-            return in.readAllBytes();
-        }
-    }
-
+    @Async
     public void sendResetPinEmail(String to, String name, String pin) {
-        try {
-            Email from = new Email(fromEmail);
-            Email toEmail = new Email(to);
+        String subject = "Reset your Learnify password";
+        String safeName = safe(name, "User");
 
-            String subject = "Reset your Learnify password";
+        String html =
+                wrapEmail(
+                        headerBlock("Password Reset") +
+                                "<p style='color:#555;'>Hello " + escapeHtml(safeName) + ",</p>" +
+                                "<p style='color:#555;'>Use this PIN to reset your password:</p>" +
+                                "<div style='font-size:28px; font-weight:bold; letter-spacing:6px; text-align:center; margin:20px 0;'>" +
+                                escapeHtml(pin) +
+                                "</div>" +
+                                "<p style='color:#999; font-size:12px;'>This PIN expires in 10 minutes. If you did not request this, please ignore this email.</p>" +
+                                footerBlock("© Learnify")
+                );
 
-            String html =
-                    "<div style='font-family: Arial, sans-serif; max-width:600px; margin:auto; border:1px solid #eee; padding:20px;'>" +
-                            "  <h2 style='color:#333;'>Password Reset</h2>" +
-                            "  <p style='color:#555;'>Hello " + name + ",</p>" +
-                            "  <p style='color:#555;'>Use this PIN to reset your password:</p>" +
-                            "  <div style='font-size:28px; font-weight:bold; letter-spacing:6px; text-align:center; margin:20px 0;'>" + pin + "</div>" +
-                            "  <p style='color:#999; font-size:12px;'>This PIN expires in 10 minutes. If you did not request this, please ignore this email.</p>" +
-                            "</div>";
-
-            Content content = new Content("text/html", html);
-            Mail mail = new Mail(from, subject, toEmail, content);
-
-            SendGrid sg = new SendGrid(apiKey);
-            Request request = new Request();
-            request.setMethod(Method.POST);
-            request.setEndpoint("mail/send");
-            request.setBody(mail.build());
-
-            Response response = sg.api(request);
-            if (response.getStatusCode() >= 400) {
-                throw new RuntimeException("SendGrid error: " + response.getStatusCode()
-                        + " body=" + response.getBody());
-            }
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        sendHtml(to, subject, html, "sendResetPinEmail");
     }
 
-    // ✅ MODIFIED: ajout loginAt pour afficher la date/heure
+    @Async
     public void sendNewDeviceEmail(String to, String name,
                                    String ip, String userAgent,
                                    String platform, String language, String timezone,
-                                   LocalDateTime loginAt) {
+                                   LocalDateTime loginAt,
+                                   String confirmUrl,
+                                   String rejectUrl) {
+
+        String subject = "New login detected on your Learnify account";
+        String safeName = safe(name, "User");
+
+        String whenText = formatWhen(loginAt, timezone);
+
+        String html =
+                wrapEmail(
+                        headerBlock("New Device Login") +
+                                "<p style='color:#555;'>Hello " + escapeHtml(safeName) + ",</p>" +
+                                "<p style='color:#555;'>We detected a login attempt from a <b>new device</b>. Please confirm to allow access.</p>" +
+                                "<div style='background:#fafafa; border:1px solid #eee; padding:12px; border-radius:6px;'>" +
+                                "<p style='margin:6px 0;'><b>Date:</b> " + escapeHtml(whenText) + "</p>" +
+                                "<p style='margin:6px 0;'><b>IP:</b> " + escapeHtml(safe(ip, "-")) + "</p>" +
+                                "<p style='margin:6px 0;'><b>User-Agent:</b> " + escapeHtml(safe(userAgent, "-")) + "</p>" +
+                                "<p style='margin:6px 0;'><b>Platform:</b> " + escapeHtml(safe(platform, "-")) + "</p>" +
+                                "<p style='margin:6px 0;'><b>Language:</b> " + escapeHtml(safe(language, "-")) + "</p>" +
+                                "<p style='margin:6px 0;'><b>Timezone:</b> " + escapeHtml(safe(timezone, "-")) + "</p>" +
+                                "</div>" +
+                                "<div style='text-align:center; margin:22px 0;'>" +
+                                "<a href='" + escapeHtml(confirmUrl) + "' style='background:#28a745; color:white; padding:12px 18px; text-decoration:none; border-radius:6px; font-weight:bold; margin-right:10px;'>Confirm this device</a>" +
+                                "<a href='" + escapeHtml(rejectUrl) + "' style='background:#dc3545; color:white; padding:12px 18px; text-decoration:none; border-radius:6px; font-weight:bold;'>Reject</a>" +
+                                "</div>" +
+                                "<p style='color:#555;'>If this wasn't you, click Reject and change your password immediately.</p>" +
+                                footerBlock("© Learnify - Security")
+                );
+
+        sendHtml(to, subject, html, "sendNewDeviceEmail");
+    }
+
+    /**
+     * Envoyé au personalEmail après création admin/tutor : identifiants Learnify.
+     */
+    @Async
+    public void sendLearnifyAccountCreated(String toPersonalEmail, String learnifyEmail, String plainPassword) {
+        String subject = "Your Learnify account has been created";
+
+        String html =
+                wrapEmail(
+                        headerBlock("Your Learnify account has been created") +
+                                "<p style='color:#555;'>Your Learnify credentials:</p>" +
+                                "<div style='background:#fafafa; border:1px solid #eee; padding:12px; border-radius:6px;'>" +
+                                "<p style='margin:6px 0;'><b>Learnify email:</b> " + escapeHtml(safe(learnifyEmail, "")) + "</p>" +
+                                "<p style='margin:6px 0;'><b>Password:</b> " + escapeHtml(safe(plainPassword, "")) + "</p>" +
+                                "</div>" +
+                                "<p style='color:#555;'>You can change your password after login.</p>" +
+                                footerBlock("© Learnify")
+                );
+
+        sendHtml(toPersonalEmail, subject, html, "sendLearnifyAccountCreated");
+    }
+
+    // ==================== CORE SENDGRID SENDER ====================
+
+    private void sendHtml(String to, String subject, String html, String tag) {
+        long t0 = System.currentTimeMillis();
+
         try {
             Email from = new Email(fromEmail);
             Email toEmail = new Email(to);
-
-            String subject = "New login detected on your Learnify account";
-
-            String safeName = (name == null || name.isBlank()) ? "User" : name;
-
-            // ✅ format date/heure
-            String whenText;
-            LocalDateTime dt = (loginAt == null) ? LocalDateTime.now() : loginAt;
-
-            try {
-                ZoneId zone = (timezone == null || timezone.isBlank())
-                        ? ZoneId.systemDefault()
-                        : ZoneId.of(timezone);
-
-                DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-                whenText = dt.atZone(ZoneId.systemDefault())
-                        .withZoneSameInstant(zone)
-                        .format(fmt) + " (" + zone + ")";
-            } catch (Exception ignored) {
-                DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-                whenText = dt.format(fmt);
-            }
-
-            String html =
-                    "<div style='font-family: Arial, sans-serif; max-width:600px; margin:auto; border:1px solid #eee; padding:20px;'>" +
-                            "  <h2 style='color:#333;'>New Device Login</h2>" +
-                            "  <p style='color:#555;'>Hello " + safeName + ",</p>" +
-                            "  <p style='color:#555;'>We detected a login to your Learnify account from a <b>new device</b>.</p>" +
-                            "  <div style='background:#fafafa; border:1px solid #eee; padding:12px; border-radius:6px;'>" +
-                            "    <p style='margin:6px 0;'><b>Date:</b> " + whenText + "</p>" + // ✅ NEW
-                            "    <p style='margin:6px 0;'><b>IP:</b> " + (ip == null ? "-" : ip) + "</p>" +
-                            "    <p style='margin:6px 0;'><b>User-Agent:</b> " + (userAgent == null ? "-" : userAgent) + "</p>" +
-                            "    <p style='margin:6px 0;'><b>Platform:</b> " + (platform == null ? "-" : platform) + "</p>" +
-                            "    <p style='margin:6px 0;'><b>Language:</b> " + (language == null ? "-" : language) + "</p>" +
-                            "    <p style='margin:6px 0;'><b>Timezone:</b> " + (timezone == null ? "-" : timezone) + "</p>" +
-                            "  </div>" +
-                            "  <p style='color:#555; margin-top:16px;'>If this wasn't you, please change your password immediately.</p>" +
-                            "  <p style='font-size:12px; color:#999; text-align:center; margin-top:20px;'>© Learnify - Security</p>" +
-                            "</div>";
 
             Content content = new Content("text/html", html);
             Mail mail = new Mail(from, subject, toEmail, content);
@@ -189,14 +149,92 @@ public class EmailService {
             request.setEndpoint("mail/send");
             request.setBody(mail.build());
 
+            logger.info("[Email:{}] Sending -> to={}, subject={}", tag, to, subject);
+
             Response response = sg.api(request);
-            if (response.getStatusCode() >= 400) {
-                throw new RuntimeException("SendGrid error: " + response.getStatusCode()
-                        + " body=" + response.getBody());
+
+            long dt = System.currentTimeMillis() - t0;
+            int status = response.getStatusCode();
+
+            if (status >= 400) {
+                logger.error("[Email:{}] SendGrid ERROR status={} in {}ms body={}", tag, status, dt, response.getBody());
+                // throw si tu veux propager l'erreur
+                // throw new RuntimeException("SendGrid error: " + status + " body=" + response.getBody());
+                return;
             }
 
+            logger.info("[Email:{}] Sent OK status={} in {}ms", tag, status, dt);
+
         } catch (Exception e) {
-            e.printStackTrace();
+            long dt = System.currentTimeMillis() - t0;
+            logger.error("[Email:{}] FAILED after {}ms -> to={}, subject={}", tag, dt, to, subject, e);
         }
+    }
+
+    // ==================== HTML HELPERS ====================
+
+    private String wrapEmail(String inner) {
+        return "<div style='font-family: Arial, sans-serif; max-width:600px; margin:auto; border:1px solid #eee; padding:20px;'>" +
+                brandBlock() +
+                inner +
+                "</div>";
+    }
+
+    private String brandBlock() {
+        // ✅ Aucun téléchargement. Soit texte, soit <img src="...">
+        if (logoUrl != null && !logoUrl.isBlank()) {
+            return "<div style='text-align:center; margin-bottom:16px;'>" +
+                    "<img src='" + escapeHtml(logoUrl) + "' alt='Learnify' style='max-width:180px; height:auto;'/>" +
+                    "</div>";
+        }
+        return "<div style='text-align:center; margin-bottom:16px; font-weight:700; font-size:22px; color:#333;'>Learnify</div>";
+    }
+
+    private String headerBlock(String title) {
+        return "<h2 style='color:#333; margin-top:0;'>" + escapeHtml(title) + "</h2>";
+    }
+
+    private String footerBlock(String text) {
+        return "<p style='font-size:12px; color:#999; text-align:center; margin-top:20px;'>" + escapeHtml(text) + "</p>";
+    }
+
+    private String button(String url, String text) {
+        return "<div style='text-align:center; margin:26px 0;'>" +
+                "<a href='" + escapeHtml(url) + "' style='background-color:#4CAF50; color:white; padding:12px 20px; text-decoration:none; border-radius:5px; font-weight:bold;'>" +
+                escapeHtml(text) +
+                "</a>" +
+                "</div>";
+    }
+
+    private String safe(String s, String fallback) {
+        return (s == null || s.isBlank()) ? fallback : s;
+    }
+
+    private String formatWhen(LocalDateTime loginAt, String timezone) {
+        LocalDateTime dt = (loginAt == null) ? LocalDateTime.now() : loginAt;
+
+        try {
+            ZoneId zone = (timezone == null || timezone.isBlank())
+                    ? ZoneId.systemDefault()
+                    : ZoneId.of(timezone);
+
+            DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+            return dt.atZone(ZoneId.systemDefault())
+                    .withZoneSameInstant(zone)
+                    .format(fmt) + " (" + zone + ")";
+        } catch (Exception ignored) {
+            DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+            return dt.format(fmt);
+        }
+    }
+
+    // Petit escape simple pour éviter injection HTML
+    private String escapeHtml(String s) {
+        if (s == null) return "";
+        return s.replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("\"", "&quot;")
+                .replace("'", "&#39;");
     }
 }

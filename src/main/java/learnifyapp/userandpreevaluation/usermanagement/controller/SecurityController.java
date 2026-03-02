@@ -1,35 +1,41 @@
 package learnifyapp.userandpreevaluation.usermanagement.controller;
 
-import jakarta.servlet.http.HttpServletRequest;
-import learnifyapp.userandpreevaluation.usermanagement.dto.NewDeviceInfo;
+import learnifyapp.userandpreevaluation.security.JwtUtil;
 import learnifyapp.userandpreevaluation.usermanagement.entity.User;
-import learnifyapp.userandpreevaluation.usermanagement.service.DeviceService;
 import learnifyapp.userandpreevaluation.usermanagement.service.UserService;
-import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.security.core.context.SecurityContextHolder;
 
 @RestController
-@RequestMapping("/api/security")
+@RequestMapping("/api/auth")
 @CrossOrigin(origins = "http://localhost:4200")
-@RequiredArgsConstructor
 public class SecurityController {
 
     private final UserService userService;
-    private final DeviceService deviceService;
+    private final JwtUtil jwtUtil;
 
-    @PostMapping("/register-device")
-    public void registerDevice(@RequestBody NewDeviceInfo info, HttpServletRequest request) {
+    public SecurityController(UserService userService, JwtUtil jwtUtil) {
+        this.userService = userService;
+        this.jwtUtil = jwtUtil;
+    }
 
-        String ip = request.getHeader("X-Forwarded-For");
-        if (ip == null || ip.isBlank()) ip = request.getRemoteAddr();
-        else ip = ip.split(",")[0].trim();
+    // ✅ ME (profil du user connecté)
+    @GetMapping("/me")
+    public ResponseEntity<User> me(@RequestHeader("Authorization") String authHeader) {
 
-        info.setIp(ip);
+        String token = authHeader.replace("Bearer ", "").trim();
 
-        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        // ⚠️ adapte selon ta méthode existante dans JwtUtil
+        // si tu as extractUsername au lieu de extractEmail => remplace ici
+        String email = jwtUtil.extractEmail(token);
+
         User user = userService.getByEmail(email);
+        return ResponseEntity.ok(user);
+    }
 
-        deviceService.registerOrUpdateAndNotify(user, info);
+    // (optionnel)
+    @PostMapping("/logout")
+    public ResponseEntity<String> logout() {
+        return ResponseEntity.ok("Logged out");
     }
 }

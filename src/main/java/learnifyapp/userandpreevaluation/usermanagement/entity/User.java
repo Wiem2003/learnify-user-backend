@@ -40,7 +40,8 @@ public class User {
 
     private String avatarUrl;
 
-
+    @Column(length = 2000)
+    private String about;
 
     @Column(name = "app_pin_hash")
     private String appPinHash;
