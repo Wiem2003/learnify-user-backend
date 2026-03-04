@@ -1,0 +1,96 @@
+<div class="management-page">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Réunions</h1>
+      <p class="page-subtitle">Planifier et gérer les entretiens</p>
+    </div>
+    <a routerLink="/admin/meetings/create" class="btn-admin primary">
+      <i class="ti ti-plus"></i> Planifier une réunion
+    </a>
+  </div>
+
+  @if (error) {
+    <div class="alert-error">
+      <i class="ti ti-alert-circle"></i> {{ error }}
+    </div>
+  }
+
+  @if (loading) {
+    <p class="loading-text">Chargement...</p>
+  } @else {
+    <div class="table-card">
+      <div class="table-responsive">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Offre / Candidature</th>
+              <th>Évaluateur</th>
+              <th>Notes</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (m of paginatedMeetings; track m.id) {
+              <tr>
+                <td>{{ formatDate(m.meetingDate) }}</td>
+                <td class="font-medium">{{ m.applicationJobTitle || '—' }}</td>
+                <td>{{ m.assignedToName || '—' }}</td>
+                <td class="notes-cell">{{ m.notes || '—' }}</td>
+                <td>
+                  <div class="action-btns">
+                    <a [routerLink]="['/admin/meetings/edit', m.id]" class="icon-btn" title="Modifier">
+                      <i class="ti ti-pencil"></i>
+                    </a>
+                    <button type="button" class="icon-btn danger" title="Supprimer" (click)="confirmDelete(m)">
+                      <i class="ti ti-trash"></i>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            }
+            @empty {
+              <tr>
+                <td colspan="5" class="empty-cell">Aucune réunion</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <div class="table-footer pagination-footer">
+        <span class="table-info">{{ meetings.length }} réunions</span>
+        <div class="pagination-controls">
+          <button type="button" class="icon-btn" [disabled]="currentPage <= 1" (click)="setPage(currentPage - 1)">
+            <i class="ti ti-chevron-left"></i>
+          </button>
+          <span class="page-info">Page {{ currentPage }} / {{ totalPages }}</span>
+          <button type="button" class="icon-btn" [disabled]="currentPage >= totalPages" (click)="setPage(currentPage + 1)">
+            <i class="ti ti-chevron-right"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (showDeleteModal && meetingToDelete) {
+    <div class="modal-overlay" (click)="cancelDelete()">
+      <div class="modal-content" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h3>Confirmer la suppression</h3>
+          <button type="button" class="modal-close" (click)="cancelDelete()">
+            <i class="ti ti-x"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <p>Supprimer la réunion du <strong>{{ formatDate(meetingToDelete.meetingDate) }}</strong> ?</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-admin outline" (click)="cancelDelete()">Annuler</button>
+          <button type="button" class="btn-admin danger" (click)="deleteMeeting()">
+            <i class="ti ti-trash"></i> Supprimer
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+</div>

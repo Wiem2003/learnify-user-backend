@@ -1,0 +1,103 @@
+<div class="admin-wrapper" [class.sidebar-collapsed]="sidebarCollapsed">
+  <!-- Sidebar -->
+  <aside class="admin-sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-icon">
+        <i class="ti ti-school"></i>
+      </div>
+      <span class="brand-text">Learnify<span class="brand-accent">English</span></span>
+      <span class="brand-badge">Admin</span>
+    </div>
+
+    <nav class="sidebar-nav">
+      <span class="nav-section-title">Main Menu</span>
+      <a *ngFor="let item of navItems"
+         href="/admin/{{ item.path }}"
+         (click)="goToAdmin(item.path); $event.preventDefault()"
+         [class.active]="isActive(item.path)"
+         class="nav-item">
+        <i [class]="item.icon"></i>
+        <span class="nav-label">{{ item.label }}</span>
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <a routerLink="/" class="nav-item back-link">
+        <i class="ti ti-arrow-left"></i>
+        <span class="nav-label">Back to Site</span>
+      </a>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <div class="admin-main">
+    <!-- Header -->
+    <header class="admin-header">
+      <div class="header-left">
+        <button class="sidebar-toggle" (click)="toggleSidebar()">
+          <i class="ti ti-menu-2"></i>
+        </button>
+        <div class="search-box">
+          <i class="ti ti-search"></i>
+          <input type="text" placeholder="Search anything..." />
+        </div>
+      </div>
+      <div class="header-right">
+        <div class="notification-wrap">
+          <button type="button" class="header-icon-btn" title="Notifications" (click)="toggleNotifications()">
+            <i class="ti ti-bell"></i>
+            @if (unreadCount > 0) {
+              <span class="notification-dot">{{ unreadCount > 9 ? '9+' : unreadCount }}</span>
+            }
+          </button>
+          @if (showNotifications) {
+            <div class="notification-panel">
+              <div class="notification-panel-header">
+                <span class="notification-panel-title">Notifications</span>
+                @if (notifications.length > 0 && unreadCount > 0) {
+                  <button type="button" class="notification-mark-all" (click)="markAllAsRead()">Tout marquer comme lu</button>
+                }
+              </div>
+              <div class="notification-panel-body">
+                @if (notificationsLoading) {
+                  <div class="notification-empty">Chargement...</div>
+                } @else if (notifications.length === 0) {
+                  <div class="notification-empty">Aucune notification</div>
+                } @else {
+                  @for (n of notifications; track n.id) {
+                    <div class="notification-item" [class.unread]="!n.read" (click)="markAsRead(n)">
+                      <div class="notification-item-title">{{ n.title }}</div>
+                      <div class="notification-item-message">{{ n.message }}</div>
+                      <div class="notification-item-time">{{ formatNotificationDate(n.createdAt) }}</div>
+                    </div>
+                  }
+                }
+              </div>
+            </div>
+          }
+        </div>
+        <button class="header-icon-btn" title="Messages">
+          <i class="ti ti-message"></i>
+        </button>
+        <div class="header-divider"></div>
+        <div class="user-menu">
+          <div class="user-avatar">
+            <i class="ti ti-user"></i>
+          </div>
+          <div class="user-info">
+            <span class="user-name">{{ auth.getCurrentUser()?.name || 'Admin' }}</span>
+            <span class="user-role">{{ auth.getCurrentUser()?.role === 'ADMIN' ? 'Super Admin' : 'Admin' }}</span>
+          </div>
+          <button type="button" class="btn-logout" (click)="logout()" title="Déconnexion">
+            <i class="ti ti-logout"></i>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Page Content -->
+    <main class="admin-content">
+      <router-outlet></router-outlet>
+    </main>
+  </div>
+</div>

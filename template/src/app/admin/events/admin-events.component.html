@@ -1,0 +1,81 @@
+<div class="management-page">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Events Management</h1>
+            <p class="page-subtitle">Schedule and manage all events</p>
+        </div>
+        <button class="btn-admin primary">
+            <i class="ti ti-calendar-plus"></i> Create Event
+        </button>
+    </div>
+
+    <!-- Filters -->
+    <div class="filters-bar">
+        <div class="search-filter">
+            <i class="ti ti-search"></i>
+            <input type="text" placeholder="Search events..." [(ngModel)]="searchTerm" />
+        </div>
+        <select class="select-filter" [(ngModel)]="filterStatus">
+            <option value="">All Statuses</option>
+            <option value="Upcoming">Upcoming</option>
+            <option value="Ongoing">Ongoing</option>
+            <option value="Completed">Completed</option>
+            <option value="Cancelled">Cancelled</option>
+        </select>
+    </div>
+
+    <!-- Table -->
+    <div class="table-card">
+        <div class="table-responsive">
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>Event</th>
+                        <th>Date</th>
+                        <th>Location</th>
+                        <th>Capacity</th>
+                        <th>Registered</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr *ngFor="let event of filteredEvents">
+                        <td class="title-cell">{{ event.title }}</td>
+                        <td class="text-muted-admin">{{ event.date }}</td>
+                        <td>
+                            <span class="location-cell">
+                                <i class="ti ti-map-pin"></i> {{ event.location }}
+                            </span>
+                        </td>
+                        <td>{{ event.capacity | number }}</td>
+                        <td>
+                            <div class="capacity-bar-wrapper">
+                                <span>{{ event.registered | number }}</span>
+                                <div class="capacity-bar">
+                                    <div class="capacity-fill"
+                                        [style.width.%]="event.capacity ? (event.registered / event.capacity * 100) : 0"
+                                        [class.full]="event.registered >= event.capacity"
+                                        [class.high]="event.registered >= event.capacity * 0.8 && event.registered < event.capacity">
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                        <td><span class="status-badge" [attr.data-status]="event.status.toLowerCase()">{{ event.status
+                                }}</span></td>
+                        <td>
+                            <div class="action-btns">
+                                <button class="icon-btn" title="Edit"><i class="ti ti-edit"></i></button>
+                                <button class="icon-btn" title="View"><i class="ti ti-eye"></i></button>
+                                <button class="icon-btn danger" title="Delete"><i class="ti ti-trash"></i></button>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="table-footer">
+            <span class="table-info">Showing {{ filteredEvents.length }} of {{ events.length }} events</span>
+        </div>
+    </div>
+</div>

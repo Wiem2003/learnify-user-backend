@@ -1,0 +1,7 @@
+@use '../_admin-shared' as *;
+.empty-cell { text-align: center; padding: 2rem !important; color: $text-muted; }
+.loading-text { color: $text-muted; margin: 1rem 0; }
+.alert-error { background: rgba($admin-cta, 0.1); color: $admin-cta; padding: 12px 16px; border-radius: 10px; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+.font-medium { font-weight: 600; }
+.rating-stars { color: #eab308; }
+.comment-cell { max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

@@ -1,0 +1,13 @@
+@use '../_admin-shared' as *;
+.empty-cell { text-align: center; padding: 2rem !important; color: $text-muted; }
+.loading-text { color: $text-muted; margin: 1rem 0; }
+.alert-error { background: rgba($admin-cta, 0.1); color: $admin-cta; padding: 12px 16px; border-radius: 10px; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 2000; }
+.modal-content { background: $card-bg; border-radius: 16px; max-width: 420px; width: 90%; box-shadow: 0 20px 50px rgba(0,0,0,0.2); }
+.modal-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid $border-color; }
+.modal-header h3 { margin: 0; font-size: 18px; color: $text-dark; }
+.modal-close { background: none; border: none; padding: 8px; cursor: pointer; border-radius: 8px; }
+.modal-body { padding: 20px; }
+.modal-footer { display: flex; gap: 12px; justify-content: flex-end; padding: 16px 20px; border-top: 1px solid $border-color; }
+.font-medium { font-weight: 600; }
+.notes-cell { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

@@ -1,0 +1,146 @@
+<div class="management-page">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Utilisateurs</h1>
+            <p class="page-subtitle">Gérer et suivre tous les comptes</p>
+        </div>
+    </div>
+
+    @if (error) {
+        <div class="alert-error"><i class="ti ti-alert-circle"></i> {{ error }}</div>
+    }
+
+    <div class="filters-bar">
+        <div class="search-filter">
+            <i class="ti ti-search"></i>
+            <input type="text" placeholder="Rechercher..." [(ngModel)]="searchTerm" />
+        </div>
+        <select class="select-filter" [(ngModel)]="filterRole">
+            <option value="">Tous les rôles</option>
+            <option value="Student">Student</option>
+            <option value="Instructor">Instructor</option>
+            <option value="Admin">Admin</option>
+        </select>
+    </div>
+
+    @if (loading) {
+        <p class="loading-text">Chargement...</p>
+    } @else {
+        <div class="table-card">
+            <div class="table-responsive">
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th><button type="button" class="th-sort" (click)="setSort('name')">Utilisateur <i class="ti" [class.ti-arrow-up]="sortBy === 'name' && sortDir === 'asc'" [class.ti-arrow-down]="sortBy === 'name' && sortDir === 'desc'"></i></button></th>
+                            <th><button type="button" class="th-sort" (click)="setSort('email')">Email <i class="ti" [class.ti-arrow-up]="sortBy === 'email' && sortDir === 'asc'" [class.ti-arrow-down]="sortBy === 'email' && sortDir === 'desc'"></i></button></th>
+                            <th><button type="button" class="th-sort" (click)="setSort('role')">Rôle <i class="ti" [class.ti-arrow-up]="sortBy === 'role' && sortDir === 'asc'" [class.ti-arrow-down]="sortBy === 'role' && sortDir === 'desc'"></i></button></th>
+                            <th><button type="button" class="th-sort" (click)="setSort('createdAt')">Inscrit le <i class="ti" [class.ti-arrow-up]="sortBy === 'createdAt' && sortDir === 'asc'" [class.ti-arrow-down]="sortBy === 'createdAt' && sortDir === 'desc'"></i></button></th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @for (user of paginatedUsers; track user.id) {
+                            <tr>
+                                <td>
+                                    <div class="user-cell">
+                                        <div class="table-avatar">{{ initials(user.name) }}</div>
+                                        <span class="user-name-cell">{{ user.name }}</span>
+                                    </div>
+                                </td>
+                                <td class="text-muted-admin">{{ user.email }}</td>
+                                <td>
+                                    <span class="role-badge" [class.admin]="user.role === 'ADMIN'" [class.pending]="user.role === 'TEACHER'" [class.active]="user.role === 'USER'">
+                                        {{ roleLabel(user.role) }}
+                                    </span>
+                                </td>
+                                <td class="text-muted-admin">{{ formatDate(user.createdAt) }}</td>
+                                <td>
+                                    <div class="action-btns">
+                                        <button type="button" class="icon-btn" title="Modifier" (click)="openEdit(user)">
+                                            <i class="ti ti-edit"></i>
+                                        </button>
+                                        <button type="button" class="icon-btn danger" title="Supprimer" (click)="confirmDelete(user)">
+                                            <i class="ti ti-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                        @empty {
+                            <tr>
+                                <td colspan="5" class="empty-cell">Aucun utilisateur</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            <div class="table-footer pagination-footer">
+                <span class="table-info">{{ filteredUsers.length }} / {{ users.length }} utilisateurs</span>
+                <div class="pagination-controls">
+                    <button type="button" class="icon-btn" [disabled]="currentPage <= 1" (click)="setPage(currentPage - 1)">
+                        <i class="ti ti-chevron-left"></i>
+                    </button>
+                    <span class="page-info">Page {{ currentPage }} / {{ totalPages }}</span>
+                    <button type="button" class="icon-btn" [disabled]="currentPage >= totalPages" (click)="setPage(currentPage + 1)">
+                        <i class="ti ti-chevron-right"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (showEditModal && editUser) {
+        <div class="modal-overlay" (click)="closeEdit()">
+            <div class="modal-content" (click)="$event.stopPropagation()">
+                <div class="modal-header">
+                    <h3>Modifier l'utilisateur</h3>
+                    <button type="button" class="modal-close" (click)="closeEdit()"><i class="ti ti-x"></i></button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>Nom</label>
+                        <input type="text" [(ngModel)]="editName" class="form-input" />
+                    </div>
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" [(ngModel)]="editEmail" class="form-input" />
+                    </div>
+                    <div class="form-group">
+                        <label>Rôle</label>
+                        <select [(ngModel)]="editRole" class="form-input">
+                            <option value="USER">Student</option>
+                            <option value="TEACHER">Instructor</option>
+                            <option value="ADMIN">Admin</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-admin outline" (click)="closeEdit()">Annuler</button>
+                    <button type="button" class="btn-admin primary" (click)="saveEdit()" [disabled]="saving">
+                        {{ saving ? 'Enregistrement...' : 'Enregistrer' }}
+                    </button>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (showDeleteModal && userToDelete) {
+        <div class="modal-overlay" (click)="cancelDelete()">
+            <div class="modal-content" (click)="$event.stopPropagation()">
+                <div class="modal-header">
+                    <h3>Confirmer la suppression</h3>
+                    <button type="button" class="modal-close" (click)="cancelDelete()"><i class="ti ti-x"></i></button>
+                </div>
+                <div class="modal-body">
+                    <p>Supprimer l'utilisateur <strong>{{ userToDelete.name }}</strong> ({{ userToDelete.email }}) ?</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-admin outline" (click)="cancelDelete()">Annuler</button>
+                    <button type="button" class="btn-admin danger" (click)="deleteUser()">
+                        <i class="ti ti-trash"></i> Supprimer
+                    </button>
+                </div>
+            </div>
+        </div>
+    }
+</div>

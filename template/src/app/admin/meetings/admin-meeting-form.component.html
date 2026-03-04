@@ -1,0 +1,62 @@
+<div class="form-page">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">{{ isEdit ? 'Modifier la réunion' : 'Planifier une réunion' }}</h1>
+      <p class="page-subtitle">{{ isEdit ? 'Modifier la date, l\'évaluateur ou les notes' : 'Choisir la candidature (optionnel), l\'évaluateur et la date' }}</p>
+    </div>
+    <a routerLink="/admin/meetings" class="btn-admin outline">
+      <i class="ti ti-arrow-left"></i> Retour
+    </a>
+  </div>
+
+  @if (loading) {
+    <p class="loading-text">Chargement...</p>
+  } @else {
+    @if (error) {
+      <div class="alert-error">{{ error }}</div>
+    }
+
+    <form #form="ngForm" (ngSubmit)="submit()" class="form-card">
+      @if (!isEdit) {
+        <div class="form-group">
+          <label for="applicationId">Candidature (optionnel)</label>
+          <select id="applicationId" [(ngModel)]="applicationId" name="applicationId" class="form-input">
+            <option [ngValue]="null">— Aucune —</option>
+            @for (app of applications; track app.id) {
+              <option [ngValue]="app.id">{{ app.jobTitle }} – {{ app.teacherName }}</option>
+            }
+          </select>
+        </div>
+      }
+      <div class="form-group">
+        <label for="evaluatorId">Évaluateur *</label>
+        <select id="evaluatorId" [(ngModel)]="evaluatorId" name="evaluatorId" class="form-input" required #evaluatorRef="ngModel">
+          <option [ngValue]="null">— Choisir —</option>
+          @for (u of evaluators; track u.id) {
+            <option [ngValue]="u.id">{{ u.name }} ({{ u.email }})</option>
+          }
+        </select>
+        @if (evaluatorRef.invalid && (evaluatorRef.dirty || evaluatorRef.touched)) {
+          <span class="field-error">Veuillez choisir un évaluateur.</span>
+        }
+      </div>
+      <div class="form-group">
+        <label for="meetingDate">Date et heure *</label>
+        <input id="meetingDate" type="datetime-local" [(ngModel)]="meetingDate" name="meetingDate" class="form-input" required #meetingDateRef="ngModel" />
+        @if (meetingDateRef.invalid && (meetingDateRef.dirty || meetingDateRef.touched)) {
+          <span class="field-error">La date et l'heure sont requises.</span>
+        }
+      </div>
+      <div class="form-group">
+        <label for="notes">Notes</label>
+        <textarea id="notes" [(ngModel)]="notes" name="notes" class="form-input" rows="3"></textarea>
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn-admin outline" routerLink="/admin/meetings">Annuler</button>
+        <button type="submit" class="btn-admin primary" [disabled]="saving || form.invalid">
+          {{ saving ? 'Enregistrement...' : (isEdit ? 'Enregistrer' : 'Créer') }}
+        </button>
+      </div>
+    </form>
+  }
+</div>

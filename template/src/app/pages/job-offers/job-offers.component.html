@@ -1,0 +1,207 @@
+<app-navbar></app-navbar>
+
+<section class="py-8 bg-light" (click)="showFavoritesDropdown = false">
+  <div class="container">
+    <div class="row mb-3">
+      <div class="col-12">
+        <div class="d-flex flex-wrap gap-2 align-items-center">
+          <a routerLink="/" class="btn btn-sm btn-outline-secondary">Back to Home</a>
+          @if (hasCv) {
+            <a routerLink="/cv" class="btn btn-sm btn-outline-primary"><i class="ti ti-edit me-1"></i>Modifier mon CV</a>
+          } @else {
+            <a routerLink="/cv" class="btn btn-sm btn-outline-primary"><i class="ti ti-file-plus me-1"></i>Create CV</a>
+          }
+          <a routerLink="/courses" class="btn btn-sm btn-outline-primary">Go to Courses</a>
+          <a routerLink="/messenger" class="btn btn-sm btn-outline-primary">Open Messenger</a>
+          @if (auth.hasRole('TEACHER')) {
+            <div class="dropdown position-relative" (click)="$event.stopPropagation()">
+              <button type="button" class="btn btn-sm btn-outline-warning d-inline-flex align-items-center gap-1"
+                (click)="openFavoritesDropdown(); $event.stopPropagation()"
+                [attr.aria-expanded]="showFavoritesDropdown"
+                aria-haspopup="true">
+                <i class="ti ti-star-filled"></i>
+                <span>Mes favoris</span>
+                @if (savedJobIds.size > 0) {
+                  <span class="badge bg-warning text-dark rounded-pill">{{ savedJobIds.size }}</span>
+                }
+              </button>
+              @if (showFavoritesDropdown) {
+                <div class="dropdown-menu show position-absolute start-0 mt-1 shadow rounded-3 p-2 favorites-dropdown">
+                  <div class="dropdown-item-text fw-semibold border-bottom pb-2 mb-2">
+                    <i class="ti ti-star me-1"></i>Offres enregistrées
+                  </div>
+                  @if (loadingFavorites) {
+                    <div class="dropdown-item-text text-muted small">
+                      <span class="spinner-border spinner-border-sm me-1" role="status"></span>Chargement...
+                    </div>
+                  } @else if (favoriteJobs.length === 0) {
+                    <div class="dropdown-item-text text-muted small">Aucune offre en favori.</div>
+                  } @else {
+                    @for (job of favoriteJobs; track job.id) {
+                      <button type="button" class="dropdown-item d-flex align-items-center gap-2 rounded-2 py-2"
+                        (click)="scrollToJob(job.id)">
+                        <i class="ti ti-briefcase text-primary"></i>
+                        <div class="text-start flex-grow-1">
+                          <span class="d-block fw-medium">{{ job.title }}</span>
+                          <span class="small text-muted">{{ job.company }} • {{ job.location }}</span>
+                        </div>
+                        <i class="ti ti-arrow-right small"></i>
+                      </button>
+                    }
+                  }
+                </div>
+              }
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+
+    <!-- Case "Modifier mon CV" visible quand les offres sont classées selon le CV -->
+    @if (showingRecommended) {
+      <div class="row mb-4">
+        <div class="col-12">
+          <div class="card border-primary border-2 rounded-4 shadow-sm modify-cv-box">
+            <div class="card-body py-3 px-4 d-flex flex-wrap align-items-center justify-content-between gap-2">
+              <div class="d-flex align-items-center gap-2">
+                <i class="ti ti-file-description fs-4 text-primary"></i>
+                <div>
+                  <strong class="d-block">Modifier votre CV</strong>
+                  <span class="small text-muted">Mettez à jour votre CV pour améliorer les recommandations d'offres.</span>
+                </div>
+              </div>
+              <a routerLink="/cv" class="btn btn-primary rounded-pill">
+                <i class="ti ti-edit me-1"></i>Modifier mon CV
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    }
+    <div class="row mb-6">
+      <div class="col-12 text-center">
+        <h1 class="display-4 fw-bold">Job Offers</h1>
+        <p class="lead text-muted">Find opportunities that match your language skills</p>
+        @if (showingRecommended) {
+          <p class="small text-success mb-0"><i class="ti ti-circle-check me-1"></i>Offres classées par pertinence selon votre CV</p>
+        }
+      </div>
+    </div>
+
+    @if (loadError) {
+      <div class="row mb-3">
+        <div class="col-12">
+          <div class="alert alert-warning mb-0" role="alert">
+            {{ loadError }}
+          </div>
+        </div>
+      </div>
+    }
+
+    <div class="row g-4">
+      @for (job of jobOffers; track job.id) {
+        <div class="col-lg-6" [id]="'job-' + job.id">
+          <div class="card shadow-sm h-100 rounded-4 card-hover">
+            <div class="card-body p-4">
+              <div class="d-flex justify-content-between align-items-start mb-3">
+                <div>
+                  <h5 class="card-title fw-bold mb-1">{{ job.title }}</h5>
+                  <p class="text-muted small mb-0">{{ job.company }} • {{ job.location }}</p>
+                </div>
+                <div class="d-flex flex-column align-items-end gap-1">
+                  @if (auth.hasRole('TEACHER')) {
+                    <button type="button" class="btn-favorite"
+                      [class.saved]="isSaved(job.id)"
+                      [disabled]="savingFavoriteId === job.id"
+                      (click)="toggleFavorite(job)"
+                      [title]="isSaved(job.id) ? 'Retirer des favoris' : 'Ajouter aux favoris'">
+                      @if (savingFavoriteId === job.id) {
+                        <span class="spinner-border spinner-border-sm" role="status"></span>
+                      } @else {
+                        <i class="ti" [class.ti-star-filled]="isSaved(job.id)" [class.ti-star]="!isSaved(job.id)"></i>
+                      }
+                    </button>
+                  }
+                  @if (job.matchScore != null) {
+                    <span class="badge bg-success rounded-pill" title="Pertinence selon votre CV">{{ job.matchScore }}% match</span>
+                  }
+                  <span class="badge bg-primary rounded-pill">{{ job.requiredLevel }}</span>
+                </div>
+              </div>
+              <p class="card-text text-muted small mb-3">{{ job.description }}</p>
+              <div class="d-flex flex-wrap gap-2 mb-3">
+                <span class="badge bg-light text-dark">{{ job.type }}</span>
+                <span class="small text-muted">Posted {{ job.postedDate }}</span>
+              </div>
+              <div class="d-flex gap-2">
+                <button class="btn btn-sm btn-outline-primary" (click)="viewJob(job)">View</button>
+                @if (auth.hasRole('TEACHER')) {
+                  @if (hasApplied(job.id)) {
+                    <button class="btn btn-sm btn-outline-secondary" (click)="openApplicationModal(job)">
+                      <i class="ti ti-edit me-1"></i>Modifier ma candidature
+                    </button>
+                  } @else {
+                    <button class="btn btn-sm btn-primary" (click)="openApplicationModal(job)">Apply</button>
+                  }
+                }
+              </div>
+            </div>
+          </div>
+        </div>
+      }
+    </div>
+  </div>
+</section>
+
+@if (showApplicationModal && selectedJob) {
+  <div class="application-modal-backdrop" (click)="closeApplicationModal()">
+    <div class="application-modal" (click)="$event.stopPropagation()">
+      <div class="application-modal-header">
+        <h5 class="mb-1">{{ isEditingApplication ? 'Modifier ma candidature' : 'Postuler à l\'offre' }}</h5>
+        <p class="small text-muted mb-0">{{ selectedJob.company }} • {{ selectedJob.location }}</p>
+      </div>
+      <div class="application-modal-body">
+        <p class="small text-muted mb-2">
+          {{ isEditingApplication ? 'Modifiez votre lettre de motivation et/ou les pièces jointes pour le poste' : 'Vous postulez au poste' }}
+          <strong>{{ selectedJob.title }}</strong>.
+          {{ isEditingApplication ? '' : 'Ajoutez une courte lettre de motivation et, si besoin, joignez un CV ou un certificat spécifiques à cette candidature.' }}
+        </p>
+        <div class="mb-3">
+          <label class="form-label small text-muted">Motivation *</label>
+          <textarea
+            class="form-control"
+            rows="4"
+            [value]="applicationMotivation"
+            (input)="onMotivationInput($event)"
+            placeholder="Expliquez en quelques phrases pourquoi vous êtes un bon candidat..."
+          ></textarea>
+        </div>
+        <div class="row g-3 mb-2">
+          <div class="col-md-6">
+            <label class="form-label small text-muted">CV (optionnel)</label>
+            <input type="file" class="form-control form-control-sm" accept=".pdf,.doc,.docx"
+              (change)="onCvSelected($event)">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label small text-muted">Certificat (optionnel)</label>
+            <input type="file" class="form-control form-control-sm" accept=".pdf,.jpg,.png"
+              (change)="onCertSelected($event)">
+          </div>
+        </div>
+        @if (applicationError) {
+          <p class="text-danger small mb-0">{{ applicationError }}</p>
+        }
+      </div>
+      <div class="application-modal-footer">
+        <button type="button" class="btn btn-sm btn-outline-secondary" (click)="closeApplicationModal()" [disabled]="applying">
+          Annuler
+        </button>
+        <button type="button" class="btn btn-sm btn-primary" (click)="submitApplication()" [disabled]="applying">
+          {{ applying ? 'Envoi…' : (isEditingApplication ? 'Enregistrer les modifications' : 'Envoyer la candidature') }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<app-footer></app-footer>
