@@ -1,0 +1,92 @@
+<nav class="navbar navbar-expand-lg navbar-modern">
+  <div class="container">
+    <!-- Brand -->
+    <a class="navbar-brand d-inline-flex gap-2 align-items-center lh-1" 
+       href="#" 
+       (click)="navigateToPage('/'); $event.preventDefault()">
+      <span class="brand-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/>
+          <circle cx="12" cy="10" r="2"/>
+          <path d="M12 14v4"/>
+        </svg>
+      </span>
+      <span class="brand-text">Learnify<span class="brand-accent">English</span></span>
+    </a>
+
+    <!-- Toggler -->
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent">
+      <span class="toggler-icon">
+        <span></span>
+        <span></span>
+        <span></span>
+      </span>
+    </button>
+
+    <!-- Navigation -->
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav mx-auto mb-2 mb-lg-0">
+        <!-- Home -->
+        <li class="nav-item">
+          <a href="/" class="nav-link" [class.active]="isActiveRoute('/')"
+             (click)="navigateToPage('/'); $event.preventDefault()">
+            <i class="ti ti-home"></i> Home
+          </a>
+        </li>
+
+        <!-- Courses -->
+        <li class="nav-item">
+          <a href="/courses" class="nav-link" [class.active]="isActiveRoute('/courses')"
+             (click)="navigateToPage('/courses'); $event.preventDefault()">
+            <i class="ti ti-book"></i> Courses
+          </a>
+        </li>
+
+        <!-- Clubs -->
+        <li class="nav-item">
+          <a href="/clubs" class="nav-link" [class.active]="isActiveRoute('/clubs')"
+             (click)="navigateToPage('/clubs'); $event.preventDefault()">
+            <i class="ti ti-users"></i> Clubs
+          </a>
+        </li>
+
+        <!-- Events -->
+        <li class="nav-item">
+          <a href="/events" class="nav-link" [class.active]="isActiveRoute('/events')"
+             (click)="navigateToPage('/events'); $event.preventDefault()">
+            <i class="ti ti-calendar"></i> Events
+          </a>
+        </li>
+
+        <!-- More Dropdown -->
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle" href="#" id="moreDropdown" role="button" data-bs-toggle="dropdown">
+            <i class="ti ti-dots"></i> More
+          </a>
+          <ul class="dropdown-menu" aria-labelledby="moreDropdown">
+            <li><a class="dropdown-item" href="/schedule" (click)="navigateToPage('/schedule'); $event.preventDefault()"><i class="ti ti-calendar-time"></i> Schedule</a></li>
+            <li><a class="dropdown-item" href="/certificate" (click)="navigateToPage('/certificate'); $event.preventDefault()"><i class="ti ti-award"></i> Certificate</a></li>
+            <li><a class="dropdown-item" href="/quiz" (click)="navigateToPage('/quiz'); $event.preventDefault()"><i class="ti ti-brain"></i> Quiz</a></li>
+            <li><hr class="dropdown-divider">
+            <li><a class="dropdown-item" href="/payment" (click)="navigateToPage('/payment'); $event.preventDefault()"><i class="ti ti-credit-card"></i> Payment</a></li>
+            <li><a class="dropdown-item" href="/messenger" (click)="navigateToPage('/messenger'); $event.preventDefault()"><i class="ti ti-messages"></i> Messenger</a></li>
+            <li><a class="dropdown-item" href="/feedback" (click)="navigateToPage('/feedback'); $event.preventDefault()"><i class="ti ti-message-dots"></i> Feedback</a></li>
+            <li><a class="dropdown-item" href="/cv" (click)="navigateToPage('/cv'); $event.preventDefault()"><i class="ti ti-file-description"></i> CV Builder</a></li>
+            <li><a class="dropdown-item" href="/job-offers" (click)="navigateToPage('/job-offers'); $event.preventDefault()"><i class="ti ti-briefcase"></i> Job Board</a></li>
+          </ul>
+        </li>
+      </ul>
+
+      <!-- CTA Buttons -->
+      <div class="navbar-actions">
+        <a href="/login" class="btn-link" (click)="navigateToPage('/login'); $event.preventDefault()">
+          Sign In
+        </a>
+        <button type="button" class="btn-cta" (click)="onGetStarted()">
+          Get Started
+          <i class="ti ti-arrow-right"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+</nav>

@@ -1,0 +1,164 @@
+<div class="container py-5">
+  <div class="row">
+    <div class="col-12">
+      <h1 class="mb-4">🤖 Test des Fonctionnalités IA</h1>
+      <p class="text-muted">Testez les fonctionnalités d'intelligence artificielle (Google Gemini)</p>
+    </div>
+  </div>
+
+  <!-- Test du service -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header bg-primary text-white">
+          <h5 class="mb-0">1️⃣ Test du Service AI</h5>
+        </div>
+        <div class="card-body">
+          <button class="btn btn-primary" (click)="testService()" [disabled]="serviceLoading">
+            <span *ngIf="serviceLoading" class="spinner-border spinner-border-sm me-2"></span>
+            Tester le service
+          </button>
+          <div *ngIf="serviceStatus" class="alert mt-3" 
+               [ngClass]="serviceStatus.includes('✅') ? 'alert-success' : 'alert-danger'">
+            {{ serviceStatus }}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Prédiction -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header bg-info text-white">
+          <h5 class="mb-0">2️⃣ Prédiction - Événement Complet</h5>
+        </div>
+        <div class="card-body">
+          <p class="text-muted">Prédit si un événement risque d'être complet bientôt</p>
+          
+          <div class="row">
+            <div class="col-md-4 mb-3">
+              <label class="form-label">Nombre de likes</label>
+              <input type="number" class="form-control" [(ngModel)]="predictionRequest.likes">
+            </div>
+            <div class="col-md-4 mb-3">
+              <label class="form-label">Nombre de réservations</label>
+              <input type="number" class="form-control" [(ngModel)]="predictionRequest.reservations">
+            </div>
+            <div class="col-md-4 mb-3">
+              <label class="form-label">Places restantes</label>
+              <input type="number" class="form-control" [(ngModel)]="predictionRequest.placesRestantes">
+            </div>
+          </div>
+
+          <button class="btn btn-info text-white" (click)="testPrediction()" [disabled]="predictionLoading">
+            <span *ngIf="predictionLoading" class="spinner-border spinner-border-sm me-2"></span>
+            Prédire
+          </button>
+
+          <div *ngIf="predictionResponse" class="alert alert-light mt-3 border">
+            <h6>Résultat de la prédiction:</h6>
+            <div class="d-flex align-items-center gap-3">
+              <span class="badge fs-6" [ngClass]="getRiskBadgeClass()">
+                {{ predictionResponse.result }}
+              </span>
+              <span class="text-muted">{{ predictionResponse.reason }}</span>
+            </div>
+          </div>
+
+          <div *ngIf="predictionError" class="alert alert-danger mt-3">
+            {{ predictionError }}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recommandation -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header bg-success text-white">
+          <h5 class="mb-0">3️⃣ Recommandation d'Événements</h5>
+        </div>
+        <div class="card-body">
+          <p class="text-muted">Recommande des événements basés sur vos préférences</p>
+          
+          <div class="mb-3">
+            <label class="form-label">Catégories aimées:</label>
+            <div class="d-flex flex-wrap gap-2">
+              <button 
+                *ngFor="let category of availableCategories"
+                class="btn btn-sm"
+                [ngClass]="isCategorySelected(category) ? 'btn-success' : 'btn-outline-success'"
+                (click)="toggleCategory(category)">
+                {{ category }}
+              </button>
+            </div>
+          </div>
+
+          <button class="btn btn-success" (click)="testRecommendation()" 
+                  [disabled]="recommendationLoading || selectedCategories.length === 0">
+            <span *ngIf="recommendationLoading" class="spinner-border spinner-border-sm me-2"></span>
+            Obtenir des recommandations
+          </button>
+
+          <div *ngIf="recommendedEvents.length > 0" class="mt-4">
+            <h6>Événements recommandés ({{ recommendedEvents.length }}):</h6>
+            <div class="row">
+              <div class="col-md-6 mb-3" *ngFor="let event of recommendedEvents">
+                <div class="card h-100">
+                  <div class="card-body">
+                    <h6 class="card-title">{{ event.name }}</h6>
+                    <p class="card-text text-muted small mb-2">{{ event.description }}</p>
+                    <div class="d-flex justify-content-between align-items-center">
+                      <span class="badge bg-primary">{{ event.category }}</span>
+                      <small class="text-muted">{{ event.date }}</small>
+                    </div>
+                    <div class="mt-2">
+                      <small class="text-success">
+                        <i class="bi bi-people"></i> {{ event.availableSeats }} places disponibles
+                      </small>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div *ngIf="recommendationError" class="alert alert-danger mt-3">
+            {{ recommendationError }}
+          </div>
+
+          <div *ngIf="!recommendationLoading && recommendedEvents.length === 0 && !recommendationError" 
+               class="alert alert-info mt-3">
+            Aucun événement recommandé. Cliquez sur "Obtenir des recommandations" pour tester.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Instructions -->
+  <div class="row">
+    <div class="col-12">
+      <div class="card border-warning">
+        <div class="card-header bg-warning">
+          <h5 class="mb-0">📝 Instructions</h5>
+        </div>
+        <div class="card-body">
+          <ol>
+            <li>Vérifiez que le backend est démarré sur <code>http://localhost:8080/back</code></li>
+            <li>Testez d'abord le service AI pour vérifier la connexion</li>
+            <li>Modifiez les valeurs de prédiction et cliquez sur "Prédire"</li>
+            <li>Sélectionnez des catégories et cliquez sur "Obtenir des recommandations"</li>
+          </ol>
+          <div class="alert alert-info mb-0">
+            <strong>Note:</strong> Les fonctionnalités IA utilisent Google Gemini. Assurez-vous que la clé API est configurée dans le backend.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,85 @@
+<app-navbar></app-navbar>
+
+<section class="py-8 bg-light">
+  <div class="container">
+    <div class="row mb-3">
+      <div class="col-12">
+        <div class="d-flex flex-wrap gap-2">
+          <a routerLink="/" class="btn btn-sm btn-outline-secondary">Back to Home</a>
+          <a routerLink="/job-offers" class="btn btn-sm btn-outline-primary">Apply for Job</a>
+          <a routerLink="/courses" class="btn btn-sm btn-outline-primary">Go to Courses</a>
+        </div>
+      </div>
+    </div>
+    <div class="row mb-6">
+      <div class="col-12">
+        <h1 class="display-4 fw-bold">My CV</h1>
+        <p class="lead text-muted">Create and manage your resume for job applications</p>
+      </div>
+    </div>
+
+    <div class="row justify-content-center">
+      <div class="col-lg-8">
+        <div class="card shadow-sm border-0 rounded-4">
+          <div class="card-body p-5">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+              <h5 class="fw-bold mb-0">Curriculum Vitae</h5>
+              @if (isEditing) {
+                <button class="btn btn-primary rounded-pill" (click)="saveCv()">Save</button>
+              } @else {
+                <button class="btn btn-outline-primary rounded-pill" (click)="toggleEdit()">Edit</button>
+              }
+            </div>
+
+            <div class="row mb-4">
+              <div class="col-md-6 mb-3">
+                <label class="form-label small text-muted">Full Name</label>
+                <input type="text" class="form-control" [(ngModel)]="cv.fullName" [readonly]="!isEditing">
+              </div>
+              <div class="col-md-6 mb-3">
+                <label class="form-label small text-muted">Email</label>
+                <input type="email" class="form-control" [(ngModel)]="cv.email" [readonly]="!isEditing">
+              </div>
+              <div class="col-12 mb-3">
+                <label class="form-label small text-muted">Phone</label>
+                <input type="text" class="form-control" [(ngModel)]="cv.phone" [readonly]="!isEditing">
+              </div>
+              <div class="col-12 mb-3">
+                <label class="form-label small text-muted">Summary</label>
+                <textarea class="form-control" rows="3" [(ngModel)]="cv.summary" [readonly]="!isEditing"></textarea>
+              </div>
+            </div>
+
+            <h6 class="fw-bold mb-3">Education</h6>
+            @for (edu of cv.education; track edu.degree) {
+              <div class="border-bottom pb-3 mb-3">
+                <strong>{{ edu.degree }}</strong> - {{ edu.school }} ({{ edu.year }})
+              </div>
+            }
+
+            <h6 class="fw-bold mb-3">Skills</h6>
+            <div class="d-flex flex-wrap gap-2 mb-4">
+              @for (skill of cv.skills; track skill) {
+                <span class="badge bg-primary bg-opacity-10 text-primary rounded-pill px-3 py-2">{{ skill }}</span>
+              }
+            </div>
+
+            <h6 class="fw-bold mb-3">Experience</h6>
+            @for (exp of cv.experience; track exp.role) {
+              <div class="border-bottom pb-3 mb-3">
+                <strong>{{ exp.role }}</strong> - {{ exp.company }} ({{ exp.period }})
+                <p class="small text-muted mb-0 mt-1">{{ exp.desc }}</p>
+              </div>
+            }
+
+            <div class="mt-4">
+              <a routerLink="/job-offers" class="btn btn-primary rounded-pill">Apply for Jobs</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<app-footer></app-footer>

@@ -1,0 +1,120 @@
+{
+  "info": {
+    "name": "Google AI Integration - Event Platform",
+    "description": "Collection pour tester les endpoints AI (Prédiction et Recommandation)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "AI Service Test",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8080/back/api/ai/test",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8080",
+          "path": ["back", "api", "ai", "test"]
+        },
+        "description": "Vérifie que le service AI fonctionne"
+      }
+    },
+    {
+      "name": "Predict Event Completion - High Risk",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"likes\": 150,\n  \"reservations\": 90,\n  \"placesRestantes\": 10\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8080/back/api/ai/predict",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8080",
+          "path": ["back", "api", "ai", "predict"]
+        },
+        "description": "Prédit si un événement risque d'être complet (cas risque élevé)"
+      }
+    },
+    {
+      "name": "Predict Event Completion - Low Risk",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"likes\": 10,\n  \"reservations\": 20,\n  \"placesRestantes\": 80\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8080/back/api/ai/predict",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8080",
+          "path": ["back", "api", "ai", "predict"]
+        },
+        "description": "Prédit si un événement risque d'être complet (cas risque faible)"
+      }
+    },
+    {
+      "name": "Recommend Events - Workshop",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"categoriesLiked\": [\"WORKSHOP\"]\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8080/back/api/ai/recommend",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8080",
+          "path": ["back", "api", "ai", "recommend"]
+        },
+        "description": "Recommande des événements basés sur la catégorie WORKSHOP"
+      }
+    },
+    {
+      "name": "Recommend Events - Multiple Categories",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"categoriesLiked\": [\"WORKSHOP\", \"CONFERENCE\", \"SEMINAR\"]\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8080/back/api/ai/recommend",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8080",
+          "path": ["back", "api", "ai", "recommend"]
+        },
+        "description": "Recommande des événements basés sur plusieurs catégories"
+      }
+    }
+  ]
+}
