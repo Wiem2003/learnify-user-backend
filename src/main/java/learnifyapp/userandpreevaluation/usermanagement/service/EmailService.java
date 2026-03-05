@@ -4,6 +4,7 @@ import com.sendgrid.*;
 import com.sendgrid.helpers.mail.Mail;
 import com.sendgrid.helpers.mail.objects.Content;
 import com.sendgrid.helpers.mail.objects.Email;
+import com.sendgrid.helpers.mail.objects.Personalization;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -26,7 +27,6 @@ public class EmailService {
     private String fromEmail;
 
     // ✅ Optionnel : lien logo (pas de téléchargement). Laisse vide si tu veux juste du texte.
-    // Exemple: https://learnify.com/assets/logo.png
     @Value("${learnify.logo-url:}")
     private String logoUrl;
 
@@ -37,19 +37,27 @@ public class EmailService {
 
     @Async
     public void sendWelcomeEmail(String to, String name) {
-        String subject = "Welcome to Learnify 🎉";
+        // ✅ enlever emojis du subject pour réduire SPAM
+        String subject = "Welcome to Learnify";
         String safeName = safe(name, "User");
 
         String html =
                 wrapEmail(
-                        headerBlock("Welcome " + escapeHtml(safeName) + " 👋") +
+                        headerBlock("Welcome " + escapeHtml(safeName)) +
                                 "<p style='font-size:15px; color:#555;'>Your student account has been successfully created.</p>" +
                                 "<p style='font-size:15px; color:#555;'>You can now log in and start using the platform.</p>" +
                                 button(appUrl + "/login", "Go to Learnify") +
                                 footerBlock("© Learnify - All rights reserved")
                 );
 
-        sendHtml(to, subject, html, "sendWelcomeEmail");
+        String plainText =
+                "Welcome " + safeName + "\n\n" +
+                        "Your student account has been successfully created.\n" +
+                        "You can now log in and start using the platform.\n\n" +
+                        "Login: " + appUrl + "/login\n\n" +
+                        "© Learnify - All rights reserved";
+
+        sendEmail(to, subject, plainText, html, "sendWelcomeEmail");
     }
 
     @Async
@@ -69,7 +77,44 @@ public class EmailService {
                                 footerBlock("© Learnify")
                 );
 
-        sendHtml(to, subject, html, "sendResetPinEmail");
+        String plainText =
+                "Password Reset\n\n" +
+                        "Hello " + safeName + ",\n\n" +
+                        "Use this PIN to reset your password:\n\n" +
+                        pin + "\n\n" +
+                        "This PIN expires in 10 minutes. If you did not request this, please ignore this email.\n\n" +
+                        "© Learnify";
+
+        sendEmail(to, subject, plainText, html, "sendResetPinEmail");
+    }
+
+    /** PIN pour débloquer le compte (après 3 tentatives échouées). */
+    @Async
+    public void sendUnblockPinEmail(String to, String name, String pin) {
+        String subject = "Unblock your Learnify account";
+        String safeName = safe(name, "User");
+
+        String html =
+                wrapEmail(
+                        headerBlock("Account Unblock") +
+                                "<p style='color:#555;'>Hello " + escapeHtml(safeName) + ",</p>" +
+                                "<p style='color:#555;'>Use this PIN to unblock your account:</p>" +
+                                "<div style='font-size:28px; font-weight:bold; letter-spacing:6px; text-align:center; margin:20px 0;'>" +
+                                escapeHtml(pin) +
+                                "</div>" +
+                                "<p style='color:#999; font-size:12px;'>This PIN expires in 10 minutes. If you did not request this, please ignore this email.</p>" +
+                                footerBlock("© Learnify")
+                );
+
+        String plainText =
+                "Account Unblock\n\n" +
+                        "Hello " + safeName + ",\n\n" +
+                        "Use this PIN to unblock your account:\n\n" +
+                        pin + "\n\n" +
+                        "This PIN expires in 10 minutes. If you did not request this, please ignore this email.\n\n" +
+                        "© Learnify";
+
+        sendEmail(to, subject, plainText, html, "sendUnblockPinEmail");
     }
 
     @Async
@@ -82,7 +127,6 @@ public class EmailService {
 
         String subject = "New login detected on your Learnify account";
         String safeName = safe(name, "User");
-
         String whenText = formatWhen(loginAt, timezone);
 
         String html =
@@ -106,7 +150,22 @@ public class EmailService {
                                 footerBlock("© Learnify - Security")
                 );
 
-        sendHtml(to, subject, html, "sendNewDeviceEmail");
+        String plainText =
+                "New Device Login\n\n" +
+                        "Hello " + safeName + ",\n\n" +
+                        "We detected a login attempt from a new device. Please confirm to allow access.\n\n" +
+                        "Date: " + whenText + "\n" +
+                        "IP: " + safe(ip, "-") + "\n" +
+                        "User-Agent: " + safe(userAgent, "-") + "\n" +
+                        "Platform: " + safe(platform, "-") + "\n" +
+                        "Language: " + safe(language, "-") + "\n" +
+                        "Timezone: " + safe(timezone, "-") + "\n\n" +
+                        "Confirm: " + safe(confirmUrl, "") + "\n" +
+                        "Reject: " + safe(rejectUrl, "") + "\n\n" +
+                        "If this wasn't you, reject and change your password immediately.\n\n" +
+                        "© Learnify - Security";
+
+        sendEmail(to, subject, plainText, html, "sendNewDeviceEmail");
     }
 
     /**
@@ -128,20 +187,49 @@ public class EmailService {
                                 footerBlock("© Learnify")
                 );
 
-        sendHtml(toPersonalEmail, subject, html, "sendLearnifyAccountCreated");
+        String plainText =
+                "Your Learnify account has been created\n\n" +
+                        "Learnify email: " + safe(learnifyEmail, "") + "\n" +
+                        "Password: " + safe(plainPassword, "") + "\n\n" +
+                        "You can change your password after login.\n\n" +
+                        "© Learnify";
+
+        sendEmail(toPersonalEmail, subject, plainText, html, "sendLearnifyAccountCreated");
     }
 
-    // ==================== CORE SENDGRID SENDER ====================
+    // ==================== CORE SENDGRID SENDER (TEXT + HTML) ====================
 
-    private void sendHtml(String to, String subject, String html, String tag) {
+    private void sendEmail(String to, String subject, String plainText, String html, String tag) {
         long t0 = System.currentTimeMillis();
 
         try {
+            if (apiKey == null || apiKey.isBlank()) {
+                logger.error("[Email:{}] Missing SendGrid API key (sendgrid.api-key).", tag);
+                return;
+            }
+            if (fromEmail == null || fromEmail.isBlank()) {
+                logger.error("[Email:{}] Missing from email (sendgrid.from).", tag);
+                return;
+            }
+
             Email from = new Email(fromEmail);
             Email toEmail = new Email(to);
 
-            Content content = new Content("text/html", html);
-            Mail mail = new Mail(from, subject, toEmail, content);
+            Mail mail = new Mail();
+            mail.setFrom(from);
+            mail.setSubject(subject);
+
+            // ✅ Reply-To (aide la délivrabilité)
+            mail.setReplyTo(new Email(fromEmail));
+
+            // ✅ To via Personalization
+            Personalization personalization = new Personalization();
+            personalization.addTo(toEmail);
+            mail.addPersonalization(personalization);
+
+            // ✅ Plain text + HTML (important pour réduire SPAM)
+            mail.addContent(new Content("text/plain", safe(plainText, "")));
+            mail.addContent(new Content("text/html", safe(html, "")));
 
             SendGrid sg = new SendGrid(apiKey);
             Request request = new Request();
@@ -158,8 +246,6 @@ public class EmailService {
 
             if (status >= 400) {
                 logger.error("[Email:{}] SendGrid ERROR status={} in {}ms body={}", tag, status, dt, response.getBody());
-                // throw si tu veux propager l'erreur
-                // throw new RuntimeException("SendGrid error: " + status + " body=" + response.getBody());
                 return;
             }
 
@@ -181,7 +267,6 @@ public class EmailService {
     }
 
     private String brandBlock() {
-        // ✅ Aucun téléchargement. Soit texte, soit <img src="...">
         if (logoUrl != null && !logoUrl.isBlank()) {
             return "<div style='text-align:center; margin-bottom:16px;'>" +
                     "<img src='" + escapeHtml(logoUrl) + "' alt='Learnify' style='max-width:180px; height:auto;'/>" +
@@ -228,7 +313,6 @@ public class EmailService {
         }
     }
 
-    // Petit escape simple pour éviter injection HTML
     private String escapeHtml(String s) {
         if (s == null) return "";
         return s.replace("&", "&amp;")

@@ -1,6 +1,7 @@
 package learnifyapp.userandpreevaluation.usermanagement.config;
 
 import org.springframework.context.annotation.Configuration;
+import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
@@ -12,8 +13,20 @@ public class WebConfig implements WebMvcConfigurer {
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
         String uploadDir = Paths.get("uploads").toAbsolutePath().toString();
-
         registry.addResourceHandler("/uploads/**")
-                .addResourceLocations("file:" + uploadDir + "/"); // ✅ important: file: + slash final
+                .addResourceLocations("file:" + uploadDir + "/");
+    }
+
+    @Override
+    public void addCorsMappings(CorsRegistry registry) {
+        registry.addMapping("/**")
+                .allowedOrigins(
+                        "http://localhost:4200",
+                        "http://192.168.1.14:4200",
+                        "http://192.168.1.14.nip.io:4200"
+                )
+                .allowedMethods("GET","POST","PUT","DELETE","OPTIONS")
+                .allowedHeaders("*")
+                .allowCredentials(true);
     }
 }

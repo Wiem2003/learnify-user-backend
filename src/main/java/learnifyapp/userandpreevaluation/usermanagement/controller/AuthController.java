@@ -6,7 +6,9 @@ import learnifyapp.userandpreevaluation.usermanagement.dto.LoginRequest;
 import learnifyapp.userandpreevaluation.usermanagement.dto.LoginResponse;
 import learnifyapp.userandpreevaluation.usermanagement.dto.RegisterRequest;
 import learnifyapp.userandpreevaluation.usermanagement.dto.ResetPasswordRequest;
+import learnifyapp.userandpreevaluation.usermanagement.dto.UnblockVerifyRequest;
 import learnifyapp.userandpreevaluation.usermanagement.entity.User;
+import learnifyapp.userandpreevaluation.usermanagement.exception.AccountLockedException;
 import learnifyapp.userandpreevaluation.usermanagement.exception.DeviceConfirmationRequiredException;
 import learnifyapp.userandpreevaluation.usermanagement.service.UserService;
 import org.springframework.http.ResponseEntity;
@@ -77,6 +79,12 @@ public class AuthController {
                     "pending", true,
                     "token", ex.getToken()
             ));
+        } catch (AccountLockedException ex) {
+            return ResponseEntity.status(423).body(Map.of(
+                    "code", "ACCOUNT_LOCKED",
+                    "message", ex.getMessage(),
+                    "lockedUntil", ex.getLockedUntil() != null ? ex.getLockedUntil().toString() : ""
+            ));
         }
     }
 
@@ -97,5 +105,18 @@ public class AuthController {
                 request.getConfirmNewPassword()
         );
         return ResponseEntity.ok("Password updated");
+    }
+
+    // ================= UNBLOCK ACCOUNT (après 3 tentatives échouées) =================
+    @PostMapping("/unblock-request")
+    public ResponseEntity<String> unblockRequest(@RequestBody ForgotPasswordRequest request) {
+        userService.requestUnblockPin(request.getEmail());
+        return ResponseEntity.ok("PIN sent to email");
+    }
+
+    @PostMapping("/unblock-verify")
+    public ResponseEntity<String> unblockVerify(@RequestBody UnblockVerifyRequest request) {
+        userService.verifyUnblockPin(request.getEmail(), request.getPin());
+        return ResponseEntity.ok("Account unblocked");
     }
 }
