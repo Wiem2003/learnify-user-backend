@@ -283,7 +283,8 @@ services:
       SPRING_DATASOURCE_PASSWORD: root
       SERVER_PORT: 8087
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
-      SENDGRID_API_KEY: ${SENDGRID_API_KEY:-SG.placeholder}
+      # Même principe qu’ang : définir SENDGRID_API_KEY dans .env ou l’environnement hôte.
+      SENDGRID_API_KEY: ${SENDGRID_API_KEY}
       GOOGLE_CLIENT_ID: 347252530779-s7on04e1it4bu9todt6ph38fk8lcqp5j.apps.googleusercontent.com
       GOOGLE_CLIENT_SECRET: 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
       WEBAUTHN_RP_ID: localhost
