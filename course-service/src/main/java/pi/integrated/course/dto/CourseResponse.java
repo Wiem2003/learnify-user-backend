@@ -24,4 +24,7 @@ public class CourseResponse {
     private Integer studentsCount;
     private LocalDateTime createdAt;
     private List<ModuleResponse> modules;
+
+    // true when the requesting user has a COMPLETED payment for this course
+    private boolean enrolled = false;
 }

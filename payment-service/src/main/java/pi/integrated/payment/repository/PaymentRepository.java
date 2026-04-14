@@ -11,4 +11,8 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
     
     @Query("SELECT SUM(p.amount) FROM Payment p WHERE p.paymentStatus = :status")
     Double calculateTotalRevenueByStatus(@Param("status") String status);
+
+    boolean existsByUserIdAndCourseIdAndPaymentStatus(Long userId, Long courseId, String paymentStatus);
+
+    java.util.List<Payment> findByUserIdAndPaymentStatus(Long userId, String paymentStatus);
 }

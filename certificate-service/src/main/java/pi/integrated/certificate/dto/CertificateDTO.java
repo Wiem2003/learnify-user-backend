@@ -39,6 +39,10 @@ public class CertificateDTO {
     
     private String pdfPath;
     
+    private String qrCodePath;
+
+    private String aiDescription;
+    
     private String verificationCode;
     
     private LocalDateTime createdAt;

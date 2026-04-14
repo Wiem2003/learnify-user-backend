@@ -4,11 +4,16 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.client.RestTemplate;
 import pi.integrated.course.dto.CourseRequest;
 import pi.integrated.course.dto.CourseResponse;
 import pi.integrated.course.service.ICourseService;
 
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/courses")
@@ -16,11 +21,23 @@ import java.util.List;
 public class CourseController {
 
     private final ICourseService courseService;
+    private final RestTemplate restTemplate;
 
-    // Public endpoints
     @GetMapping
     public ResponseEntity<List<CourseResponse>> getAllCourses() {
         return ResponseEntity.ok(courseService.getAllCourses());
+    }
+
+    /**
+     * Returns all courses with enrolled=true for courses the user has paid for.
+     * GET /api/courses?userId=1
+     */
+    @GetMapping(params = "userId")
+    public ResponseEntity<List<CourseResponse>> getAllCoursesForUser(@RequestParam Long userId) {
+        List<CourseResponse> courses = courseService.getAllCourses();
+        Set<Long> paidIds = getPaidCourseIds(userId);
+        courses.forEach(c -> c.setEnrolled(paidIds.contains(c.getId())));
+        return ResponseEntity.ok(courses);
     }
 
     @GetMapping("/{id}")
@@ -58,5 +75,24 @@ public class CourseController {
     public ResponseEntity<Void> deleteCourse(@PathVariable Long id) {
         courseService.deleteCourse(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @SuppressWarnings("unchecked")
+    private Set<Long> getPaidCourseIds(Long userId) {
+        try {
+            var response = restTemplate.getForEntity(
+                "http://payment-service/api/payments/user/" + userId + "/courses",
+                java.util.Map.class
+            );
+            if (response.getBody() != null && response.getBody().get("data") instanceof List) {
+                List<?> data = (List<?>) response.getBody().get("data");
+                return data.stream()
+                    .map(o -> Long.valueOf(o.toString()))
+                    .collect(Collectors.toSet());
+            }
+        } catch (Exception e) {
+            // payment-service unavailable — degrade gracefully
+        }
+        return Collections.emptySet();
     }
 }

@@ -151,4 +151,16 @@ public class PaymentService {
         return "BATCH-" + System.currentTimeMillis() + "-" + 
                UUID.randomUUID().toString().substring(0, 8).toUpperCase();
     }
+
+    public boolean hasUserPaidForCourse(Long userId, Long courseId) {
+        return paymentRepository.existsByUserIdAndCourseIdAndPaymentStatus(userId, courseId, "COMPLETED");
+    }
+
+    public List<Long> getPaidCourseIds(Long userId) {
+        return paymentRepository.findByUserIdAndPaymentStatus(userId, "COMPLETED")
+                .stream()
+                .map(p -> p.getCourseId())
+                .distinct()
+                .collect(Collectors.toList());
+    }
 }
