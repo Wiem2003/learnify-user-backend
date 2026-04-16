@@ -1,20 +1,57 @@
-/** Club category values used in forms and API */
-export type ClubCategory = 'Speaking Club' | 'Debate Club' | 'Writing Club' | 'Culture Club';
-
 export interface Club {
   id: number;
   name: string;
-  category: ClubCategory;
+  description: string;
+  category: string;
   schedule: string;
   maxMembers: number;
-  description: string;
   image: string;
-  /** ISO date string or Date from API */
   createdAt?: string | Date;
+  requiredLevel?: string;
+  capacity?: number;
+  currentMembers?: number;
+  createdBy?: number;
+  tutorId?: number;
+  tutorName?: string;
 }
 
-/** Payload for creating a club (no id, no createdAt) */
-export type ClubCreate = Omit<Club, 'id' | 'createdAt'>;
+export interface ClubRequest {
+  id: number;
+  club: Club;
+  userId: number;
+  userEmail: string;
+  userLevel: string;
+  status: 'PENDING' | 'ACCEPTED' | 'REJECTED';
+  requestedAt: string;
+  rejectionReason?: string;
+}
 
-/** Payload for updating a club (partial, no id) */
-export type ClubUpdate = Partial<Omit<Club, 'id'>>;
+export interface JoinRequestDto {
+  userId: number;
+  userEmail: string;
+  userLevel: string;
+}
+
+export interface ChatMessage {
+  id: string;
+  roomId: string;
+  userId: number;
+  username: string;
+  message: string;
+  timestamp: Date;
+  type: 'group' | 'private' | 'ai';
+  fromUserId?: number;
+  fromUsername?: string;
+  toUserId?: number;
+  edited?: boolean;
+  editedAt?: Date;
+  deleted?: boolean;
+  pinned?: boolean;
+  reactions?: { [emoji: string]: number[] };
+  forwardedFrom?: { username: string; message: string } | null;
+  // AI fields
+  explanation?: string;
+  original?: string;
+  hasError?: boolean;
+  mode?: string;
+}

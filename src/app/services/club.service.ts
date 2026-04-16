@@ -1,34 +1,63 @@
 import { Injectable } from '@angular/core';
-import { ApiBaseService } from './api-base.service';
+import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { Club, ClubCreate, ClubUpdate } from '../models/club.model';
+import { Club, ClubRequest, JoinRequestDto } from '../models/club.model';
 
 @Injectable({ providedIn: 'root' })
 export class ClubService {
-  constructor(private api: ApiBaseService) {}
+  private base = '/api/clubs';
 
-  /** GET /api/clubs - list all clubs */
+  constructor(private http: HttpClient) {}
+
   getAll(): Observable<Club[]> {
-    return this.api.get<Club[]>('/clubs');
+    return this.http.get<Club[]>(this.base);
   }
 
-  /** GET /api/clubs/:id - get one club by id */
   getById(id: number): Observable<Club> {
-    return this.api.get<Club>(`/clubs/${id}`);
+    return this.http.get<Club>(`${this.base}/${id}`);
   }
 
-  /** POST /api/clubs - create club */
-  create(payload: ClubCreate): Observable<Club> {
-    return this.api.post<ClubCreate, Club>('/clubs', payload);
+  create(payload: Partial<Club>): Observable<Club> {
+    return this.http.post<Club>(this.base, payload);
   }
 
-  /** PUT /api/clubs/:id - update club */
-  update(id: number, payload: ClubUpdate): Observable<Club> {
-    return this.api.put<ClubUpdate, Club>(`/clubs/${id}`, payload);
+  update(id: number, payload: Partial<Club>): Observable<Club> {
+    return this.http.put<Club>(`${this.base}/${id}`, payload);
   }
 
-  /** DELETE /api/clubs/:id - delete club */
   delete(id: number): Observable<void> {
-    return this.api.delete<void>(`/clubs/${id}`);
+    return this.http.delete<void>(`${this.base}/${id}`);
+  }
+
+  requestJoin(clubId: number, dto: JoinRequestDto): Observable<ClubRequest> {
+    return this.http.post<ClubRequest>(`${this.base}/${clubId}/request`, dto);
+  }
+
+  getMyRequests(userId: number): Observable<ClubRequest[]> {
+    return this.http.get<ClubRequest[]>(`${this.base}/requests/user/${userId}`);
+  }
+
+  getAllRequests(): Observable<ClubRequest[]> {
+    return this.http.get<ClubRequest[]>(`${this.base}/requests`);
+  }
+
+  getPendingRequests(): Observable<ClubRequest[]> {
+    return this.http.get<ClubRequest[]>(`${this.base}/requests/pending`);
+  }
+
+  acceptRequest(requestId: number): Observable<ClubRequest> {
+    return this.http.put<ClubRequest>(`${this.base}/requests/${requestId}/accept`, {});
+  }
+
+  rejectRequest(requestId: number, reason: string): Observable<ClubRequest> {
+    return this.http.put<ClubRequest>(`${this.base}/requests/${requestId}/reject`, { reason });
+  }
+
+  checkAccess(clubId: number, userId: number): Observable<{ access: boolean }> {
+    return this.http.get<{ access: boolean }>(`${this.base}/${clubId}/access/${userId}`);
+  }
+
+  getMembers(clubId: number): Observable<any[]> {
+    return this.http.get<any[]>(`${this.base}/${clubId}/members`);
   }
 }

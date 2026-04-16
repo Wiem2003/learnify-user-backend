@@ -1,0 +1,246 @@
+﻿<div class="chat-page" (click)="closeMenus()">
+
+  <div *ngIf="accessDenied" class="container py-5 text-center">
+    <div class="alert alert-danger"><i class="bi bi-lock-fill me-2"></i>You are not a member of this club.</div>
+    <a routerLink="/clubs" class="btn btn-primary">Back to Clubs</a>
+  </div>
+
+  <div *ngIf="loading && !accessDenied" class="d-flex justify-content-center align-items-center h-100">
+    <div class="spinner-border text-primary"></div>
+  </div>
+
+  <div *ngIf="!loading && !accessDenied" class="chat-layout">
+
+    <!-- Sidebar -->
+    <div class="chat-sidebar">
+      <div class="sidebar-header">
+        <h6 class="mb-0 fw-bold">{{ club?.name }}</h6>
+        <span class="badge bg-success">{{ onlineUsers.length }} online</span>
+      </div>
+
+      <!-- AI Mode selector -->
+      <div class="ai-mode-section">
+        <div class="ai-mode-header">
+          <span class="ai-icon">&#x1F916;</span>
+          <span class="ai-label">AI Coach</span>
+          <label class="ai-toggle ms-auto">
+            <input type="checkbox" [(ngModel)]="aiEnabled" />
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div *ngIf="aiEnabled" class="ai-mode-buttons">
+          <button *ngFor="let m of ['correction','teacher','suggestion']"
+                  class="ai-mode-btn" [class.active]="aiMode === m"
+                  (click)="setAiMode(m); $event.stopPropagation()">
+            {{ m | titlecase }}
+          </button>
+        </div>
+        <div *ngIf="aiEnabled" class="ai-mode-desc">
+          <span *ngIf="aiMode === 'correction'">Fixes grammar errors</span>
+          <span *ngIf="aiMode === 'teacher'">Explains grammar rules</span>
+          <span *ngIf="aiMode === 'suggestion'">Suggests better phrasing</span>
+        </div>
+      </div>
+
+      <!-- Contacts -->
+      <div class="contact-list">
+        <div *ngFor="let c of contacts"
+             class="contact-item"
+             [class.active]="activeContact?.userId === c.userId && activeContact?.isGroup === c.isGroup"
+             (click)="selectContact(c)">
+          <div class="contact-avatar" [class.group-avatar]="c.isGroup">
+            <i *ngIf="c.isGroup" class="bi bi-people-fill"></i>
+            <span *ngIf="!c.isGroup">{{ c.username.charAt(0).toUpperCase() }}</span>
+          </div>
+          <div class="contact-info">
+            <span class="contact-name">{{ c.username }}</span>
+            <span *ngIf="c.isTutor" class="badge bg-warning text-dark ms-1" style="font-size:10px">Tutor</span>
+            <span class="contact-sub">{{ c.isGroup ? "Group chat" : "Private" }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tutor moderation panel -->
+      <div *ngIf="isTutor" class="moderation-section">
+        <button class="btn btn-sm btn-outline-danger w-100"
+                (click)="showModerationPanel = !showModerationPanel; $event.stopPropagation()">
+          <i class="bi bi-shield-fill me-1"></i>Members ({{ allMembers.length }})
+        </button>
+        <div *ngIf="showModerationPanel" class="moderation-panel mt-2">
+          <div *ngIf="allMembers.length === 0" class="text-center small text-muted py-2">No members yet</div>
+          <div *ngFor="let m of allMembers" class="member-row">
+            <div class="member-info">
+              <span class="online-dot" [class.online]="m.online"></span>
+              <span class="small member-name" [class.blocked-name]="m.blocked">{{ m.username }}</span>
+              <span *ngIf="m.blocked" class="badge bg-danger ms-1" style="font-size:9px">blocked</span>
+            </div>
+            <div class="member-actions">
+              <button *ngIf="m.online && !m.blocked" class="mod-btn kick" title="Kick"
+                      (click)="kick(m); $event.stopPropagation()">
+                <i class="bi bi-person-dash-fill"></i>
+              </button>
+              <button *ngIf="!m.blocked" class="mod-btn block" title="Block"
+                      (click)="block(m); $event.stopPropagation()">
+                <i class="bi bi-slash-circle-fill"></i>
+              </button>
+              <button *ngIf="m.blocked" class="mod-btn unblock" title="Unblock"
+                      (click)="unblock(m); $event.stopPropagation()">
+                <i class="bi bi-check-circle-fill"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chat main -->
+    <div class="chat-main">
+      <div class="chat-header">
+        <a routerLink="/clubs" class="btn btn-sm btn-link text-white p-0 me-2"><i class="bi bi-arrow-left"></i></a>
+        <div class="header-info">
+          <span class="fw-bold">{{ activeContact?.isGroup ? club?.name : activeContact?.username }}</span>
+          <span class="header-sub">{{ activeContact?.isGroup ? (onlineUsers.length + " online") : "Private conversation" }}</span>
+        </div>
+        <div class="ms-auto d-flex align-items-center gap-2">
+          <span *ngIf="aiEnabled && activeContact?.isGroup" class="ai-badge">
+            &#x1F916; {{ aiMode | titlecase }}
+          </span>
+          <button *ngIf="pinnedMessages.length > 0" class="btn btn-sm btn-light"
+                  (click)="showPinned = !showPinned; $event.stopPropagation()">
+            <i class="bi bi-pin-fill text-warning me-1"></i>{{ pinnedMessages.length }}
+          </button>
+        </div>
+      </div>
+
+      <div *ngIf="showPinned && pinnedMessages.length > 0" class="pinned-panel">
+        <div class="pinned-title"><i class="bi bi-pin-fill text-warning me-1"></i>Pinned Messages</div>
+        <div *ngFor="let pm of pinnedMessages" class="pinned-item">
+          <span class="fw-semibold small">{{ pm.username }}:</span>
+          <span class="small ms-1">{{ pm.message }}</span>
+        </div>
+      </div>
+
+      <div class="messages-area">
+        <ng-container *ngFor="let msg of activeMessages">
+
+          <!-- AI Coach message -->
+          <div *ngIf="isAi(msg)" class="ai-msg-row">
+            <div class="ai-bubble">
+              <div class="ai-bubble-header">
+                <span class="ai-coach-label">&#x1F916; AI Coach</span>
+                <span class="ai-mode-tag">{{ msg.mode | titlecase }}</span>
+                <span *ngIf="msg.hasError" class="ai-error-tag">Error found</span>
+                <span *ngIf="!msg.hasError" class="ai-ok-tag">Looks good!</span>
+              </div>
+              <div *ngIf="msg.original" class="ai-original">
+                <span class="ai-field-label">Original:</span> {{ msg.original }}
+              </div>
+              <div class="ai-corrected">
+                <span class="ai-field-label">{{ msg.hasError ? "Corrected:" : "Suggestion:" }}</span>
+                <strong>{{ msg.message }}</strong>
+              </div>
+              <div *ngIf="msg.explanation" class="ai-explanation">
+                <span class="ai-field-label">Explanation:</span> {{ msg.explanation }}
+              </div>
+              <div class="ai-time">{{ msg.timestamp | date:"HH:mm" }}</div>
+            </div>
+          </div>
+
+          <!-- Regular message -->
+          <div *ngIf="!isAi(msg)" class="msg-row" [class.msg-own]="isOwn(msg)">
+            <div *ngIf="!isOwn(msg)" class="msg-avatar">{{ msg.username.charAt(0).toUpperCase() }}</div>
+            <div class="msg-content">
+              <div *ngIf="msg.forwardedFrom" class="forwarded-banner">
+                <i class="bi bi-arrow-return-right me-1"></i>Forwarded from <strong>{{ msg.forwardedFrom.username }}</strong>
+              </div>
+              <div class="msg-bubble" [class.own]="isOwn(msg)" [class.deleted]="msg.deleted"
+                   (contextmenu)="openContextMenu($event, msg)">
+                <div *ngIf="!isOwn(msg) && !msg.deleted" class="msg-sender">{{ msg.username }}</div>
+                <div class="msg-text">{{ msg.message }}</div>
+                <div class="msg-meta">
+                  <span *ngIf="msg.edited && !msg.deleted" class="edited-tag">edited</span>
+                  <span *ngIf="msg.pinned && !msg.deleted" class="pin-tag"><i class="bi bi-pin-fill"></i></span>
+                  <span class="msg-time">{{ msg.timestamp | date:"HH:mm" }}</span>
+                </div>
+              </div>
+              <div *ngIf="reactionEntries(msg).length > 0" class="reactions-row" [class.own]="isOwn(msg)">
+                <span *ngFor="let r of reactionEntries(msg)"
+                      class="reaction-chip" [class.reacted]="r.reacted"
+                      (click)="reactTo(r.emoji, msg); $event.stopPropagation()">
+                  {{ r.emoji }} {{ r.count }}
+                </span>
+                <button class="reaction-add-btn" (click)="openReactionPicker($event, msg)">+</button>
+              </div>
+              <button *ngIf="reactionEntries(msg).length === 0 && !msg.deleted"
+                      class="quick-react-btn" (click)="openReactionPicker($event, msg)">
+                <i class="bi bi-emoji-smile"></i>
+              </button>
+            </div>
+          </div>
+
+        </ng-container>
+
+        <div *ngIf="typingUsers.length > 0" class="typing-indicator">
+          <span>{{ typingUsers.join(", ") }} {{ typingUsers.length === 1 ? "is" : "are" }} typing</span>
+          <span class="dots"><span></span><span></span><span></span></span>
+        </div>
+        <div #messagesEnd></div>
+      </div>
+
+      <div *ngIf="editingMessage" class="edit-bar">
+        <i class="bi bi-pencil-fill text-primary me-2"></i>
+        <input #editInput type="text" class="form-control form-control-sm flex-grow-1"
+               [(ngModel)]="editText" (keyup.enter)="confirmEdit()" (keyup.escape)="cancelEdit()" />
+        <button class="btn btn-sm btn-primary ms-2" (click)="confirmEdit()">Save</button>
+        <button class="btn btn-sm btn-outline-secondary ms-1" (click)="cancelEdit()">Cancel</button>
+      </div>
+
+      <div *ngIf="forwardingMessage" class="forward-bar">
+        <i class="bi bi-arrow-return-right text-info me-2"></i>
+        <span class="small flex-grow-1">Forwarding: <em>"{{ forwardingMessage.message | slice:0:50 }}"</em></span>
+        <button class="btn btn-sm btn-info ms-2" (click)="sendForward()">Send here</button>
+        <button class="btn btn-sm btn-outline-secondary ms-1" (click)="cancelForward()">Cancel</button>
+      </div>
+
+      <div class="chat-input-area">
+        <input type="text" class="form-control" placeholder="Type a message..."
+               [(ngModel)]="newMessage"
+               (input)="onTypingInput()"
+               (keyup.enter)="send()"
+               [disabled]="!!editingMessage || !!forwardingMessage" />
+        <button class="btn btn-primary send-btn" (click)="send()" [disabled]="!!editingMessage || !!forwardingMessage">
+          <i class="bi bi-send-fill"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Context menu -->
+  <div *ngIf="contextMenu.visible && contextMenu.msg"
+       class="context-menu"
+       [style.left.px]="contextMenu.x"
+       [style.top.px]="contextMenu.y"
+       (click)="$event.stopPropagation()">
+    <button class="ctx-item" (click)="openReactionPicker($event, contextMenu.msg!)">
+      <i class="bi bi-emoji-smile me-2"></i>React
+    </button>
+    <button *ngIf="isOwn(contextMenu.msg!) && !contextMenu.msg!.deleted" class="ctx-item" (click)="startEdit(contextMenu.msg!)">
+      <i class="bi bi-pencil me-2"></i>Edit
+    </button>
+    <button class="ctx-item" (click)="startForward(contextMenu.msg!)">
+      <i class="bi bi-arrow-return-right me-2"></i>Forward
+    </button>
+    <button class="ctx-item" (click)="pinMsg(contextMenu.msg!)">
+      <i class="bi bi-pin me-2"></i>{{ contextMenu.msg!.pinned ? "Unpin" : "Pin" }}
+    </button>
+    <button *ngIf="canDelete(contextMenu.msg!) && !contextMenu.msg!.deleted" class="ctx-item danger" (click)="deleteMsg(contextMenu.msg!)">
+      <i class="bi bi-trash me-2"></i>Delete
+    </button>
+  </div>
+
+  <!-- Reaction picker -->
+  <div *ngIf="reactionPicker.visible" class="reaction-picker" (click)="$event.stopPropagation()">
+    <button *ngFor="let e of EMOJIS" class="emoji-btn" (click)="react(e)">{{ e }}</button>
+  </div>
+
+</div>
