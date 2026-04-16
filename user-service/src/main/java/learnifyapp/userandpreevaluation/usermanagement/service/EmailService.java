@@ -88,6 +88,35 @@ public class EmailService {
         sendEmail(to, subject, plainText, html, "sendResetPinEmail");
     }
 
+    /** PIN pour débloquer le compte (après 3 tentatives échouées). */
+    @Async
+    public void sendUnblockPinEmail(String to, String name, String pin) {
+        String subject = "Unblock your Learnify account";
+        String safeName = safe(name, "User");
+
+        String html =
+                wrapEmail(
+                        headerBlock("Account Unblock") +
+                                "<p style='color:#555;'>Hello " + escapeHtml(safeName) + ",</p>" +
+                                "<p style='color:#555;'>Use this PIN to unblock your account:</p>" +
+                                "<div style='font-size:28px; font-weight:bold; letter-spacing:6px; text-align:center; margin:20px 0;'>" +
+                                escapeHtml(pin) +
+                                "</div>" +
+                                "<p style='color:#999; font-size:12px;'>This PIN expires in 10 minutes. If you did not request this, please ignore this email.</p>" +
+                                footerBlock("© Learnify")
+                );
+
+        String plainText =
+                "Account Unblock\n\n" +
+                        "Hello " + safeName + ",\n\n" +
+                        "Use this PIN to unblock your account:\n\n" +
+                        pin + "\n\n" +
+                        "This PIN expires in 10 minutes. If you did not request this, please ignore this email.\n\n" +
+                        "© Learnify";
+
+        sendEmail(to, subject, plainText, html, "sendUnblockPinEmail");
+    }
+
     @Async
     public void sendNewDeviceEmail(String to, String name,
                                    String ip, String userAgent,
@@ -169,13 +198,14 @@ public class EmailService {
     }
 
     // ==================== CORE SENDGRID SENDER (TEXT + HTML) ====================
+    // Aligné sur ang/UserAndPreevaluation (pas de mail_settings / sandbox : même JSON que le backend qui fonctionne).
 
     private void sendEmail(String to, String subject, String plainText, String html, String tag) {
         long t0 = System.currentTimeMillis();
 
         try {
             if (apiKey == null || apiKey.isBlank()) {
-                logger.error("[Email:{}] Missing SendGrid API key (sendgrid.api-key).", tag);
+                logger.error("[Email:{}] Missing SendGrid API key (sendgrid.api-key / env SENDGRID_API_KEY).", tag);
                 return;
             }
             if (fromEmail == null || fromEmail.isBlank()) {

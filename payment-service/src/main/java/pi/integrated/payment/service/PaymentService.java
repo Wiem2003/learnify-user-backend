@@ -3,8 +3,10 @@ package pi.integrated.payment.service;
 import pi.integrated.payment.dto.BatchPaymentRequest;
 import pi.integrated.payment.dto.PaymentDTO;
 import pi.integrated.payment.entity.Payment;
+import pi.integrated.payment.event.PaymentCompletedEvent;
 import pi.integrated.payment.exception.ResourceNotFoundException;
 import pi.integrated.payment.mapper.PaymentMapper;
+import pi.integrated.payment.messaging.PaymentEventPublisher;
 import pi.integrated.payment.repository.PaymentRepository;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -26,6 +28,7 @@ public class PaymentService {
     private final PaymentRepository paymentRepository;
     private final PaymentMapper paymentMapper;
     private final EmailService emailService;
+    private final PaymentEventPublisher eventPublisher;
     
     public List<PaymentDTO> getAllPayments() {
         return paymentRepository.findAll()
@@ -113,6 +116,19 @@ public class PaymentService {
                 
                 log.info("Successfully created payment ID: {} for course: {}", 
                          savedPayment.getId(), courseItem.getCourseId());
+
+                // Publish async events to RabbitMQ (non-blocking — payment succeeds even if RabbitMQ is down)
+                try {
+                    PaymentCompletedEvent event = new PaymentCompletedEvent(
+                        request.getUserId(), request.getUserName(), request.getUserEmail(),
+                        courseItem.getCourseId(), courseItem.getCourseTitle(),
+                        courseItem.getAmount(), savedPayment.getTransactionId(), LocalDateTime.now()
+                    );
+                    eventPublisher.publishPaymentCompleted(event);
+                    eventPublisher.publishCourseEnrolled(event);
+                } catch (Exception mqEx) {
+                    log.warn("RabbitMQ unavailable — payment saved but async events not published: {}", mqEx.getMessage());
+                }
             }
             
             // Send email confirmation after successful payment

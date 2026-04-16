@@ -252,6 +252,6 @@ public class WebAuthnService {
         User user = userRepo.findById(dbCred.getUserId())
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        return jwtUtil.generateToken(user.getEmail(), user.getRole().name(), user.getId());
+        return jwtUtil.generateToken(user.getEmail(), user.getRole().name());
     }
 }

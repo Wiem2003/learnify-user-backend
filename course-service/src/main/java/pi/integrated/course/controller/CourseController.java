@@ -4,14 +4,14 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.client.RestTemplate;
+import pi.integrated.course.client.PaymentClient;
 import pi.integrated.course.dto.CourseRequest;
 import pi.integrated.course.dto.CourseResponse;
 import pi.integrated.course.service.ICourseService;
 
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -21,7 +21,8 @@ import java.util.stream.Collectors;
 public class CourseController {
 
     private final ICourseService courseService;
-    private final RestTemplate restTemplate;
+    // Feign Client — replaces RestTemplate for payment enrollment check
+    private final PaymentClient paymentClient;
 
     @GetMapping
     public ResponseEntity<List<CourseResponse>> getAllCourses() {
@@ -30,6 +31,7 @@ public class CourseController {
 
     /**
      * Returns all courses with enrolled=true for courses the user has paid for.
+     * Uses Feign Client to call payment-service synchronously.
      * GET /api/courses?userId=1
      */
     @GetMapping(params = "userId")
@@ -60,7 +62,6 @@ public class CourseController {
         return ResponseEntity.ok(courseService.searchCourses(keyword));
     }
 
-    // Admin endpoints
     @PostMapping("/admin")
     public ResponseEntity<CourseResponse> createCourse(@RequestBody CourseRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(courseService.createCourse(request));
@@ -80,12 +81,9 @@ public class CourseController {
     @SuppressWarnings("unchecked")
     private Set<Long> getPaidCourseIds(Long userId) {
         try {
-            var response = restTemplate.getForEntity(
-                "http://payment-service/api/payments/user/" + userId + "/courses",
-                java.util.Map.class
-            );
-            if (response.getBody() != null && response.getBody().get("data") instanceof List) {
-                List<?> data = (List<?>) response.getBody().get("data");
+            Map<String, Object> response = paymentClient.getPaidCourseIds(userId);
+            if (response != null && response.get("data") instanceof List) {
+                List<?> data = (List<?>) response.get("data");
                 return data.stream()
                     .map(o -> Long.valueOf(o.toString()))
                     .collect(Collectors.toSet());

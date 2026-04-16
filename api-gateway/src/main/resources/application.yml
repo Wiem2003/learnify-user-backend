@@ -1,56 +1,92 @@
+# Port par défaut : 8080 (ne pas confondre avec job-service :8088).
+# 503 sur /api/auth/* : aucune instance « user-service » dans Eureka → démarrer
+# eureka-server (8761), puis user-service (8087), puis cette gateway.
+# Sans Eureka : lancer la gateway avec --spring.profiles.active=local (voir application-local.yml).
+
 spring:
   application:
     name: api-gateway
   cloud:
     gateway:
       routes:
-        # event-service: /api/events/**, /api/reservations/** → lb://event-service
         - id: event-service
           uri: lb://event-service
           predicates:
             - Path=/api/events/**,/api/reservations/**
 
-        # payment-service: /api/payments/** → lb://payment-service
         - id: payment-service
           uri: lb://payment-service
           predicates:
             - Path=/api/payments/**,/api/notifications/**
 
-        # certificate-service: /api/certificates/** → lb://certificate-service
         - id: certificate-service
           uri: lb://certificate-service
           predicates:
             - Path=/api/certificates/**
 
-        # quiz-feedback-service: quiz/question/attempt/feedback endpoints
         - id: quiz-feedback-service
           uri: lb://quiz-feedback-service
           predicates:
             - Path=/api/quizzes/**,/api/questions/**,/api/attempts/**,/api/feedbacks/**
 
-        # ai-service: /api/ai/** → lb://ai-service
         - id: ai-service
           uri: lb://ai-service
           predicates:
             - Path=/api/ai/**,/api/chat/**,/api/quiz-generator/**,/api/feedback-analysis/**
 
-        # course-service: /api/courses/** → lb://course-service
         - id: course-service
           uri: lb://course-service
           predicates:
             - Path=/api/courses/**
 
-        # user-service: auth, users, admin user mgmt, app-pin, webauthn, oauth2 endpoints
-        - id: user-service
-          uri: lb://USER-SERVICE
+        - id: preevaluation-service
+          uri: lb://preevaluation-service
           predicates:
-            - Path=/api/auth/**,/api/users/**,/api/admin/**,/api/app-pin/**,/api/webauthn/**,/oauth2/**,/login/oauth2/**
+            - Path=/api/preevaluation/**
 
-        # job-service: jobs, applications, meetings, ratings, notifications, saved jobs, cv profiles
+        - id: user-service
+          uri: lb://user-service
+          predicates:
+            - Path=/api/auth/**,/api/users/**,/api/me/**,/api/admin/**,/api/app-pin/**,/api/webauthn/**,/oauth2/**,/login/oauth2/**
+
         - id: job-service
           uri: lb://job-service
           predicates:
             - Path=/api/jobs/**,/api/applications/**,/api/meetings/**,/api/ratings/**,/api/job-notifications/**,/api/saved-jobs/**,/api/cv-profiles/**
+
+        # Swagger API docs routes for centralized documentation
+        - id: user-service-docs
+          uri: lb://user-service
+          predicates:
+            - Path=/api/auth/v3/api-docs
+        - id: payment-service-docs
+          uri: lb://payment-service
+          predicates:
+            - Path=/api/payments/v3/api-docs
+        - id: certificate-service-docs
+          uri: lb://certificate-service
+          predicates:
+            - Path=/api/certificates/v3/api-docs
+        - id: course-service-docs
+          uri: lb://course-service
+          predicates:
+            - Path=/api/courses/v3/api-docs
+        - id: quiz-service-docs
+          uri: lb://quiz-feedback-service
+          predicates:
+            - Path=/api/quizzes/v3/api-docs
+        - id: ai-service-docs
+          uri: lb://ai-service
+          predicates:
+            - Path=/api/ai/v3/api-docs
+        - id: job-service-docs
+          uri: lb://job-service
+          predicates:
+            - Path=/api/jobs/v3/api-docs
+        - id: preevaluation-service-docs
+          uri: lb://preevaluation-service
+          predicates:
+            - Path=/api/preevaluation/v3/api-docs
 
       globalcors:
         corsConfigurations:
@@ -65,9 +101,36 @@ server:
 eureka:
   client:
     service-url:
-      defaultZone: http://eureka-server:8761/eureka/
+      defaultZone: http://localhost:8761/eureka/
     register-with-eureka: true
     fetch-registry: true
   instance:
-    prefer-ip-address: true
+    prefer-ip-address: false
+    hostname: localhost
     instance-id: ${spring.application.name}:${server.port}
+
+# Centralized Swagger UI — aggregates all microservice API docs at the gateway
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    urls:
+      - name: user-service
+        url: /api/auth/v3/api-docs
+      - name: event-service
+        url: /api/events/v3/api-docs
+      - name: payment-service
+        url: /api/payments/v3/api-docs
+      - name: certificate-service
+        url: /api/certificates/v3/api-docs
+      - name: course-service
+        url: /api/courses/v3/api-docs
+      - name: quiz-feedback-service
+        url: /api/quizzes/v3/api-docs
+      - name: ai-service
+        url: /api/ai/v3/api-docs
+      - name: job-service
+        url: /api/jobs/v3/api-docs
+      - name: preevaluation-service
+        url: /api/preevaluation/v3/api-docs
+  api-docs:
+    enabled: true

@@ -3,21 +3,33 @@ package learnifyapp.userandpreevaluation.usermanagement.service;
 import learnifyapp.userandpreevaluation.security.JwtUtil;
 import learnifyapp.userandpreevaluation.usermanagement.dto.ChangePasswordRequest;
 import learnifyapp.userandpreevaluation.usermanagement.dto.LoginResponse;
+import learnifyapp.userandpreevaluation.usermanagement.dto.NewDeviceInfo;
 import learnifyapp.userandpreevaluation.usermanagement.dto.RegisterRequest;
 import learnifyapp.userandpreevaluation.usermanagement.dto.UpdateProfileRequest;
 import learnifyapp.userandpreevaluation.usermanagement.entity.PasswordResetToken;
+import learnifyapp.userandpreevaluation.usermanagement.entity.UnblockPinToken;
 import learnifyapp.userandpreevaluation.usermanagement.entity.User;
 import learnifyapp.userandpreevaluation.usermanagement.entity.UserSession;
 import learnifyapp.userandpreevaluation.usermanagement.enums.Role;
+import learnifyapp.userandpreevaluation.usermanagement.exception.AccountLockedException;
+import learnifyapp.userandpreevaluation.usermanagement.exception.DeviceConfirmationRequiredException;
+import learnifyapp.userandpreevaluation.usermanagement.exception.EmailAlreadyExistsException;
+import learnifyapp.userandpreevaluation.usermanagement.repository.DeviceLoginAttemptRepository;
+import learnifyapp.userandpreevaluation.usermanagement.repository.KnownDeviceRepository;
 import learnifyapp.userandpreevaluation.usermanagement.repository.PasswordResetTokenRepository;
+import learnifyapp.userandpreevaluation.usermanagement.repository.UnblockPinTokenRepository;
 import learnifyapp.userandpreevaluation.usermanagement.repository.UserRepository;
 import learnifyapp.userandpreevaluation.usermanagement.repository.UserSessionRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.nio.file.*;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Random;
@@ -27,6 +39,8 @@ import java.util.regex.Pattern;
 @Service
 public class UserService {
 
+    private static final Logger log = LoggerFactory.getLogger(UserService.class);
+
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
@@ -34,12 +48,32 @@ public class UserService {
     private final PasswordResetTokenRepository passwordResetTokenRepository;
     private final UserSessionRepository userSessionRepository;
 
+    private final KnownDeviceRepository knownDeviceRepository;
+    private final DeviceLoginAttemptRepository deviceLoginAttemptRepository;
+    private final UnblockPinTokenRepository unblockPinTokenRepository;
+
+    private final DeviceService deviceService;
+
+    private static final int MAX_FAILED_ATTEMPTS = 3;
+    private static final Duration LOCKOUT_DURATION = Duration.ofMinutes(15);
+
+    @Value("${app.skip-device-confirmation:false}")
+    private boolean skipDeviceConfirmation;
+
+    /** Local uniquement : log du PIN si l’e-mail (SendGrid) n’est pas configuré. */
+    @Value("${app.security.log-unblock-pin-in-dev:false}")
+    private boolean logUnblockPinInDev;
+
     public UserService(UserRepository userRepository,
                        PasswordEncoder passwordEncoder,
                        JwtUtil jwtUtil,
                        EmailService emailService,
                        PasswordResetTokenRepository passwordResetTokenRepository,
-                       UserSessionRepository userSessionRepository) {
+                       UserSessionRepository userSessionRepository,
+                       DeviceService deviceService,
+                       DeviceLoginAttemptRepository deviceLoginAttemptRepository,
+                       KnownDeviceRepository knownDeviceRepository,
+                       UnblockPinTokenRepository unblockPinTokenRepository) {
 
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
@@ -47,19 +81,36 @@ public class UserService {
         this.emailService = emailService;
         this.passwordResetTokenRepository = passwordResetTokenRepository;
         this.userSessionRepository = userSessionRepository;
+        this.deviceService = deviceService;
+        this.deviceLoginAttemptRepository = deviceLoginAttemptRepository;
+        this.knownDeviceRepository = knownDeviceRepository;
+        this.unblockPinTokenRepository = unblockPinTokenRepository;
+    }
+
+    private static String normalizeEmail(String email) {
+        if (email == null) {
+            return null;
+        }
+        String e = email.trim().toLowerCase();
+        return e.isEmpty() ? null : e;
     }
 
     // ================= REGISTER STUDENT =================
     public User registerStudent(RegisterRequest request) {
 
-        if (userRepository.existsByEmail(request.getEmail())) {
-            throw new RuntimeException("Email already exists");
+        String email = normalizeEmail(request.getEmail());
+        if (email == null) {
+            throw new RuntimeException("Email is required");
+        }
+        if (userRepository.existsByEmail(email)) {
+            throw new EmailAlreadyExistsException();
         }
 
         User user = new User();
         user.setFirstName(request.getFirstName());
         user.setLastName(request.getLastName());
-        user.setEmail(request.getEmail());
+        user.setEmail(email);
+        user.setUsername(email.toLowerCase().replaceAll("[^a-z0-9]", "_"));
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setRole(Role.STUDENT);
 
@@ -77,14 +128,19 @@ public class UserService {
     // ================= REGISTER CANDIDATE =================
     public User registerCandidate(RegisterRequest request) {
 
-        if (userRepository.existsByEmail(request.getEmail())) {
-            throw new RuntimeException("Email already exists");
+        String email = normalizeEmail(request.getEmail());
+        if (email == null) {
+            throw new RuntimeException("Email is required");
+        }
+        if (userRepository.existsByEmail(email)) {
+            throw new EmailAlreadyExistsException();
         }
 
         User user = new User();
         user.setFirstName(request.getFirstName());
         user.setLastName(request.getLastName());
-        user.setEmail(request.getEmail());
+        user.setEmail(email);
+        user.setUsername(email.toLowerCase().replaceAll("[^a-z0-9]", "_"));
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setRole(Role.CANDIDATE);
 
@@ -113,16 +169,23 @@ public class UserService {
     // ================= CREATE TUTOR =================
     public User createTutor(RegisterRequest request) {
 
-        if (userRepository.existsByEmail(request.getEmail())) {
-            throw new RuntimeException("Email already exists");
+        String learnifyEmail = normalizeEmail(request.getEmail());
+        if (learnifyEmail == null) {
+            throw new RuntimeException("Email is required");
+        }
+        if (userRepository.existsByEmail(learnifyEmail)) {
+            throw new EmailAlreadyExistsException();
+        }
+        if (!learnifyEmail.endsWith(LEARNIFY_DOMAIN)) {
+            throw new RuntimeException("Tutor Learnify email must end with @learnify.com");
         }
 
-        validatePersonalEmail(request.getPersonalEmail(), request.getEmail());
+        validatePersonalEmail(request.getPersonalEmail(), learnifyEmail);
 
         User user = new User();
         user.setFirstName(request.getFirstName());
         user.setLastName(request.getLastName());
-        user.setEmail(request.getEmail());
+        user.setEmail(learnifyEmail);
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setRole(Role.TUTOR);
 
@@ -131,7 +194,7 @@ public class UserService {
         try {
             emailService.sendLearnifyAccountCreated(
                     request.getPersonalEmail().trim(),
-                    request.getEmail(),
+                    learnifyEmail,
                     request.getPassword()
             );
         } catch (Exception e) {
@@ -144,16 +207,23 @@ public class UserService {
     // ================= CREATE ADMIN =================
     public User createAdmin(RegisterRequest request) {
 
-        if (userRepository.existsByEmail(request.getEmail())) {
-            throw new RuntimeException("Email already exists");
+        String learnifyEmail = normalizeEmail(request.getEmail());
+        if (learnifyEmail == null) {
+            throw new RuntimeException("Email is required");
+        }
+        if (userRepository.existsByEmail(learnifyEmail)) {
+            throw new EmailAlreadyExistsException();
+        }
+        if (!learnifyEmail.endsWith(LEARNIFY_DOMAIN)) {
+            throw new RuntimeException("Admin Learnify email must end with @learnify.com");
         }
 
-        validatePersonalEmail(request.getPersonalEmail(), request.getEmail());
+        validatePersonalEmail(request.getPersonalEmail(), learnifyEmail);
 
         User user = new User();
         user.setFirstName(request.getFirstName());
         user.setLastName(request.getLastName());
-        user.setEmail(request.getEmail());
+        user.setEmail(learnifyEmail);
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setRole(Role.ADMIN);
 
@@ -162,7 +232,7 @@ public class UserService {
         try {
             emailService.sendLearnifyAccountCreated(
                     request.getPersonalEmail().trim(),
-                    request.getEmail(),
+                    learnifyEmail,
                     request.getPassword()
             );
         } catch (Exception e) {
@@ -172,32 +242,92 @@ public class UserService {
         return savedUser;
     }
 
-    // ================= LOGIN =================
+    // ================= LOGIN (OPTION 2) =================
     public LoginResponse login(String email,
                                String password,
                                String role,
                                String userAgent,
-                               String ip) {
+                               String ip,
+                               String deviceId,
+                               String platform,
+                               String language,
+                               String timezone) {
 
+        if (email == null || email.isBlank()) {
+            throw new RuntimeException("Email is required");
+        }
+        if (password == null || password.isBlank()) {
+            throw new RuntimeException("Password is required");
+        }
+
+        email = email.trim().toLowerCase();
+
+        User user = userRepository.findByEmailIgnoreCase(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        // ✅ Compte bloqué après 3 tentatives échouées (15 min)
+        LocalDateTime now = LocalDateTime.now();
+        if (user.getLockedUntil() != null && user.getLockedUntil().isAfter(now)) {
+            throw new AccountLockedException("Account locked for 15 minutes. Use 'Unblock with PIN' to receive a PIN by email.", user.getLockedUntil());
+        }
+
+        if (!passwordEncoder.matches(password, user.getPassword())) {
+            int attempts = (user.getFailedLoginAttempts() != null ? user.getFailedLoginAttempts() : 0) + 1;
+            user.setFailedLoginAttempts(attempts);
+            if (attempts >= MAX_FAILED_ATTEMPTS) {
+                user.setLockedUntil(now.plus(LOCKOUT_DURATION));
+                userRepository.save(user);
+                throw new AccountLockedException("Account locked for 15 minutes. Use 'Unblock with PIN' to receive a PIN by email.", user.getLockedUntil());
+            }
+            userRepository.save(user);
+            throw new RuntimeException("Invalid credentials");
+        }
+
+        // ✅ Succès : réinitialiser tentatives et blocage
+        user.setFailedLoginAttempts(0);
+        user.setLockedUntil(null);
+        userRepository.save(user);
+
+        // ✅ Si role non fourni (QR approve ou autre), on prend le rôle réel du user
+        if (role == null || role.isBlank()) {
+            role = user.getRole().name();
+        }
+
+        // ✅ Domain rule seulement si role demandé = ADMIN/TUTOR
         if ("ADMIN".equalsIgnoreCase(role) || "TUTOR".equalsIgnoreCase(role)) {
-            if (email == null || !email.trim().toLowerCase().endsWith(LEARNIFY_DOMAIN)) {
+            if (!email.endsWith(LEARNIFY_DOMAIN)) {
                 throw new RuntimeException("Admin and Tutor must login with their Learnify email (@learnify.com)");
             }
         }
 
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        if (!passwordEncoder.matches(password, user.getPassword())) {
-            throw new RuntimeException("Invalid credentials");
-        }
-
+        // ✅ Space check
         if (!user.getRole().name().equalsIgnoreCase(role)) {
             throw new RuntimeException("Access denied: wrong space for this account");
         }
 
-        String token = jwtUtil.generateToken(email, user.getRole().name(), user.getId());
+        // ✅ 1) check device first (no token yet) — skip if app.skip-device-confirmation=true (e.g. dev / no gateway)
+        if (!skipDeviceConfirmation) {
+            NewDeviceInfo info = NewDeviceInfo.builder()
+                    .deviceId(deviceId)
+                    .userAgent(userAgent)
+                    .platform(platform)
+                    .language(language)
+                    .timezone(timezone)
+                    .ip(ip)
+                    .build();
 
+            String st = deviceService.checkDeviceOrCreateAttempt(user, info, "LOCAL", "LOGIN");
+
+            if (st != null && st.startsWith("PENDING:")) {
+                String pendingToken = st.split(":", 2)[1];
+                throw new DeviceConfirmationRequiredException(pendingToken);
+            }
+        }
+
+        // ✅ 2) device connu => générer JWT
+        String token = jwtUtil.generateToken(email, user.getRole().name());
+
+        // ✅ 3) save active session only if device known
         UserSession s = new UserSession();
         s.setUser(user);
         s.setSessionId(UUID.randomUUID().toString());
@@ -208,9 +338,14 @@ public class UserService {
         s.setCreatedAt(LocalDateTime.now());
         s.setLastSeenAt(LocalDateTime.now());
         s.setRevoked(false);
+
         userSessionRepository.save(s);
 
-        return new LoginResponse(token, user.getRole().name(), user.getEmail());
+        return new LoginResponse(
+                token,
+                user.getRole().name(),
+                user.getEmail()
+        );
     }
 
     private String parseBrowser(String ua) {
@@ -246,10 +381,13 @@ public class UserService {
 
         email = email.trim().toLowerCase();
 
-        User user = userRepository.findByEmail(email).orElse(null);
+        User user = userRepository.findByEmailIgnoreCase(email).orElse(null);
         if (user == null) {
             return genericMsg;
         }
+
+        // Toujours utiliser l’e-mail canonique en base pour le token et l’envoi SendGrid
+        email = user.getEmail() != null ? user.getEmail().trim().toLowerCase() : email;
 
         // ✅ Invalidate all previous active PINs
         passwordResetTokenRepository.invalidateAllActivePins(email);
@@ -300,7 +438,7 @@ public class UserService {
             throw new RuntimeException("PIN expired");
         }
 
-        User user = userRepository.findByEmail(email)
+        User user = userRepository.findByEmailIgnoreCase(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         user.setPassword(passwordEncoder.encode(newPassword));
@@ -310,9 +448,61 @@ public class UserService {
         passwordResetTokenRepository.save(token);
     }
 
+    // ================= UNBLOCK ACCOUNT (après 3 échecs) =================
+    @Transactional
+    public void requestUnblockPin(String email) {
+        if (email == null || email.isBlank()) {
+            throw new RuntimeException("Email is required");
+        }
+        email = email.trim().toLowerCase();
+        User user = userRepository.findByEmailIgnoreCase(email).orElseThrow(() -> new RuntimeException("User not found"));
+        if (user.getLockedUntil() == null || user.getLockedUntil().isBefore(LocalDateTime.now())) {
+            throw new RuntimeException("Account is not locked");
+        }
+        unblockPinTokenRepository.invalidateAllActivePins(email);
+        String pin = String.format("%06d", new Random().nextInt(1_000_000));
+        UnblockPinToken token = new UnblockPinToken();
+        token.setEmail(email);
+        token.setPin(pin);
+        token.setExpiresAt(LocalDateTime.now().plusMinutes(10));
+        token.setUsed(false);
+        unblockPinTokenRepository.save(token);
+        emailService.sendUnblockPinEmail(user.getEmail(), user.getFirstName(), pin);
+        if (logUnblockPinInDev) {
+            log.warn("[DEV] PIN de déblocage pour {} : {} — désactive app.security.log-unblock-pin-in-dev en production", email, pin);
+        }
+    }
+
+    @Transactional
+    public void verifyUnblockPin(String email, String pin) {
+        if (email == null || email.isBlank()) {
+            throw new RuntimeException("Email is required");
+        }
+        if (pin == null || pin.isBlank()) {
+            throw new RuntimeException("PIN is required");
+        }
+        email = email.trim().toLowerCase();
+        pin = pin.trim();
+        UnblockPinToken token = unblockPinTokenRepository
+                .findTopByEmailAndPinAndUsedFalseOrderByIdDesc(email, pin)
+                .orElseThrow(() -> new RuntimeException("Invalid PIN"));
+        if (token.getExpiresAt().isBefore(LocalDateTime.now())) {
+            throw new RuntimeException("PIN expired");
+        }
+        User user = userRepository.findByEmailIgnoreCase(email).orElseThrow(() -> new RuntimeException("User not found"));
+        user.setFailedLoginAttempts(0);
+        user.setLockedUntil(null);
+        userRepository.save(user);
+        token.setUsed(true);
+        unblockPinTokenRepository.save(token);
+    }
+
     // ================= PROFILE =================
     public User getByEmail(String email) {
-        return userRepository.findByEmail(email)
+        if (email == null || email.isBlank()) {
+            throw new RuntimeException("User not found");
+        }
+        return userRepository.findByEmailIgnoreCase(email.trim())
                 .orElseThrow(() -> new RuntimeException("User not found"));
     }
 
@@ -324,7 +514,7 @@ public class UserService {
 
         if (req.getEmail() != null && !req.getEmail().equalsIgnoreCase(user.getEmail())) {
             if (userRepository.existsByEmail(req.getEmail())) {
-                throw new RuntimeException("Email already exists");
+                throw new EmailAlreadyExistsException();
             }
             user.setEmail(req.getEmail());
         }
@@ -387,8 +577,8 @@ public class UserService {
         return userRepository.findAll();
     }
 
-    public List<User> getTutors() {
-        return userRepository.findByRole(Role.TUTOR);
+    public List<User> findUsersByRole(Role role) {
+        return userRepository.findByRole(role);
     }
 
     // ✅ UPDATED: block delete if user has active sessions
@@ -402,7 +592,12 @@ public class UserService {
             throw new RuntimeException("Cannot delete system admin");
         }
 
+        // ✅ 1) supprimer d'abord les tables enfants (FK)
         userSessionRepository.deleteAllByUserId(id);
+        knownDeviceRepository.deleteAllByUserId(id);
+        deviceLoginAttemptRepository.deleteAllByUserId(id);
+
+        // ✅ 2) puis supprimer l'utilisateur
         userRepository.deleteById(id);
     }
 
@@ -426,5 +621,25 @@ public class UserService {
         s.setRevoked(false);
 
         userSessionRepository.save(s);
+    }
+
+    public User getUserByAttemptToken(String token) {
+        return deviceLoginAttemptRepository.findByToken(token)
+                .orElseThrow(() -> new RuntimeException("Invalid token"))
+                .getUser();
+    }
+
+    /** Appelé par preevaluation-service (JWT étudiant) après fin du test. */
+    @Transactional
+    public void updatePreevaluationFinalLevel(String email, String finalLevel) {
+        if (finalLevel == null || finalLevel.isBlank()) {
+            throw new IllegalArgumentException("finalLevel required");
+        }
+        User user = getByEmail(email);
+        if (user.getRole() != Role.STUDENT) {
+            throw new RuntimeException("Only students have pre-evaluation levels");
+        }
+        user.setPreevaluationFinalLevel(finalLevel.trim().toUpperCase());
+        userRepository.save(user);
     }
 }

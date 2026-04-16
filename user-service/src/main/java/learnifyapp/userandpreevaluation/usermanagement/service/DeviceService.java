@@ -8,6 +8,7 @@ import learnifyapp.userandpreevaluation.usermanagement.enums.DeviceAttemptStatus
 import learnifyapp.userandpreevaluation.usermanagement.repository.DeviceLoginAttemptRepository;
 import learnifyapp.userandpreevaluation.usermanagement.repository.KnownDeviceRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,6 +18,9 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 public class DeviceService {
+
+    @Value("${app.frontend-url:http://localhost:4200}")
+    private String appFrontendUrl;
 
     private final KnownDeviceRepository knownDeviceRepository;
     private final DeviceLoginAttemptRepository attemptRepository;
@@ -96,9 +100,9 @@ public class DeviceService {
 
         attemptRepository.save(a);
 
-        // ✅ IMPORTANT: lien email doit appeler le BACKEND (pas Angular)
-        String confirmUrl = "http://localhost:4200/auth/device-confirm?token=" + token;
-        String rejectUrl  = "http://localhost:4200/auth/device-reject?token=" + token;
+        String base = frontendBaseUrl();
+        String confirmUrl = base + "/auth/device-confirm?token=" + token;
+        String rejectUrl = base + "/auth/device-reject?token=" + token;
 
         emailService.sendNewDeviceEmail(
                 user.getEmail(),
@@ -114,6 +118,13 @@ public class DeviceService {
         );
 
         return "PENDING:" + token;
+    }
+
+    private String frontendBaseUrl() {
+        if (appFrontendUrl == null || appFrontendUrl.isBlank()) {
+            return "http://localhost:4200";
+        }
+        return appFrontendUrl.trim().replaceAll("/+$", "");
     }
 
     /**

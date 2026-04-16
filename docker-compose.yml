@@ -133,6 +133,25 @@ services:
       retries: 5
 
   # ─────────────────────────────────────────────
+  # MESSAGE BROKER
+  # ─────────────────────────────────────────────
+
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─────────────────────────────────────────────
   # EUREKA SERVICE REGISTRY
   # ─────────────────────────────────────────────
 
@@ -187,10 +206,13 @@ services:
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
       EMAIL_USERNAME: ${EMAIL_USERNAME:-tahersahbi7@gmail.com}
       EMAIL_PASSWORD: ${EMAIL_PASSWORD:-ofswwnnicgclvatr}
+      RABBITMQ_HOST: rabbitmq
     depends_on:
       payment-mysql:
         condition: service_healthy
       eureka-server:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
 
   certificate-service:
@@ -206,10 +228,13 @@ services:
       SPRING_DATASOURCE_PASSWORD: root
       SERVER_PORT: 8083
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      RABBITMQ_HOST: rabbitmq
     depends_on:
       certificate-mysql:
         condition: service_healthy
       eureka-server:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
 
   quiz-feedback-service:
@@ -283,7 +308,8 @@ services:
       SPRING_DATASOURCE_PASSWORD: root
       SERVER_PORT: 8087
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
-      SENDGRID_API_KEY: ${SENDGRID_API_KEY:-SG.placeholder}
+      # Même principe qu’ang : définir SENDGRID_API_KEY dans .env ou l’environnement hôte.
+      SENDGRID_API_KEY: ${SENDGRID_API_KEY}
       GOOGLE_CLIENT_ID: 347252530779-s7on04e1it4bu9todt6ph38fk8lcqp5j.apps.googleusercontent.com
       GOOGLE_CLIENT_SECRET: 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
       WEBAUTHN_RP_ID: localhost

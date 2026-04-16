@@ -3,8 +3,7 @@ package pi.integrated.course.controller;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.client.RestTemplate;
-import org.springframework.http.*;
+import pi.integrated.course.client.CertificateClient;
 
 import java.util.Map;
 
@@ -13,11 +12,12 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class CourseCompletionController {
 
-    private final RestTemplate restTemplate;
+    // Feign Client — replaces RestTemplate for synchronous inter-service call
+    private final CertificateClient certificateClient;
 
     /**
      * Called when a student finishes a course.
-     * Triggers certificate generation in certificate-service.
+     * Uses Feign Client to call certificate-service synchronously.
      *
      * POST /api/courses/{courseId}/complete
      * Body: { "userId": 1, "userName": "Taher Sahbi", "userEmail": "taher@gmail.com", "courseTitle": "Java Basics" }
@@ -36,22 +36,16 @@ public class CourseCompletionController {
             "status",      "ISSUED"
         );
 
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-
         try {
-            ResponseEntity<Object> response = restTemplate.exchange(
-                "http://certificate-service/api/certificates",
-                HttpMethod.POST,
-                new HttpEntity<>(certRequest, headers),
-                Object.class
-            );
+            Map<String, Object> certificate = certificateClient.createCertificate(certRequest);
             return ResponseEntity.ok(Map.of(
                 "message", "Course completed! Certificate is being generated and will be sent to your email.",
-                "certificate", response.getBody()
+                "certificate", certificate
             ));
         } catch (Exception e) {
-            return ResponseEntity.status(500).body(Map.of("error", "Certificate generation failed: " + e.getMessage()));
+            return ResponseEntity.status(500).body(Map.of(
+                "error", "Certificate generation failed: " + e.getMessage()
+            ));
         }
     }
 }
