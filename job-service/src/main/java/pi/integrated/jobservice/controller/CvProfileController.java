@@ -41,4 +41,12 @@ public class CvProfileController {
                 .<ResponseEntity<?>>map(ResponseEntity::ok)
                 .orElse(ResponseEntity.status(404).body(Map.of("message", "No CV uploaded yet")));
     }
+
+    @GetMapping("/mine/exists")
+    public ResponseEntity<Map<String, Boolean>> exists(HttpServletRequest request) {
+        Long userId = (Long) request.getAttribute("userId");
+        boolean exists = cvProfileService.getProfile(userId).isPresent();
+        return ResponseEntity.ok(Map.of("hasCv", exists));
+    }
 }
+

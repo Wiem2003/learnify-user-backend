@@ -14,7 +14,6 @@ import pi.integrated.jobservice.repository.SavedJobRepository;
 import pi.integrated.jobservice.repository.TeacherCvProfileRepository;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -24,25 +23,27 @@ public class JobService {
 
     private final JobRepository jobRepository;
     private final JobPublicationScheduleRepository scheduleRepository;
-    private final TeacherCvProfileRepository cvProfileRepository;
+    private final TeacherCvProfileRepository cvProfileRepository; // Note: Used for global matching if still exists
     private final ApplicationMatchScoreService matchScoreService;
     private final SavedJobRepository savedJobRepository;
     private final ApplicationRepository applicationRepository;
 
     public Job createJob(CreateJobRequest req) {
         Job job = Job.builder()
-                .title(req.getTitle())
+                .titre(req.getTitre())
+                .nbPlaces(req.getNbPlaces())
                 .description(req.getDescription())
+                .requirements(req.getRequirements())
                 .location(req.getLocation())
                 .subject(req.getSubject())
                 .salaryMin(req.getSalaryMin())
                 .salaryMax(req.getSalaryMax())
                 .createdAt(LocalDateTime.now())
                 .expiresAt(req.getExpiresAt())
+                .deadline(req.getDeadline())
                 .build();
 
         if (req.getScheduledPublicationAt() != null && req.getScheduledPublicationAt().isAfter(LocalDateTime.now())) {
-            // Schedule for later — don't set status OPEN yet
             job.setStatus(JobStatus.CLOSED);
             job = jobRepository.save(job);
             JobPublicationSchedule schedule = JobPublicationSchedule.builder()
@@ -58,15 +59,39 @@ public class JobService {
         return job;
     }
 
+    /** Mise à jour : ne remplace les champs étendus (lieu, salaires…) que s’ils sont fournis (formulaire Learn n’envoie pas ces clés). */
     public Job updateJob(Long id, CreateJobRequest req) {
         Job job = getJobOrThrow(id);
-        job.setTitle(req.getTitle());
-        job.setDescription(req.getDescription());
-        job.setLocation(req.getLocation());
-        job.setSubject(req.getSubject());
-        job.setSalaryMin(req.getSalaryMin());
-        job.setSalaryMax(req.getSalaryMax());
-        if (req.getExpiresAt() != null) job.setExpiresAt(req.getExpiresAt());
+        if (req.getTitre() != null) {
+            job.setTitre(req.getTitre());
+        }
+        if (req.getNbPlaces() != null) {
+            job.setNbPlaces(req.getNbPlaces());
+        }
+        if (req.getDescription() != null) {
+            job.setDescription(req.getDescription());
+        }
+        if (req.getRequirements() != null) {
+            job.setRequirements(req.getRequirements());
+        }
+        if (req.getLocation() != null) {
+            job.setLocation(req.getLocation());
+        }
+        if (req.getSubject() != null) {
+            job.setSubject(req.getSubject());
+        }
+        if (req.getSalaryMin() != null) {
+            job.setSalaryMin(req.getSalaryMin());
+        }
+        if (req.getSalaryMax() != null) {
+            job.setSalaryMax(req.getSalaryMax());
+        }
+        if (req.getExpiresAt() != null) {
+            job.setExpiresAt(req.getExpiresAt());
+        }
+        if (req.getDeadline() != null) {
+            job.setDeadline(req.getDeadline());
+        }
         return jobRepository.save(job);
     }
 
@@ -83,27 +108,26 @@ public class JobService {
                 .orElseThrow(() -> new RuntimeException("Job not found: " + id));
     }
 
-    public List<Job> searchJobs(String title, String location, String subject) {
-        return jobRepository.searchJobs(title, location, subject);
+    public List<Job> searchJobs(String titre, String location, String subject) {
+        return jobRepository.searchJobs(titre, location, subject);
     }
 
-    /**
-     * Returns jobs with computed match scores for a given teacher's CV profile.
-     */
     public List<JobWithScoreDTO> getJobsWithScoreForTeacher(Long teacherId) {
         String cvText = cvProfileRepository.findByUserId(teacherId)
                 .map(p -> p.getExtractedText())
                 .orElse("");
 
-        return jobRepository.findByStatus(JobStatus.OPEN).stream()
+        return jobRepository.findByStatusOrderByCreatedAtDesc(JobStatus.OPEN).stream()
                 .map(job -> {
-                    double score = matchScoreService.computeScore(cvText, job);
+                    int score = matchScoreService.computeJobMatchScoreForCvText(cvText, job);
                     boolean saved = savedJobRepository.existsByUserIdAndJobId(teacherId, job.getId());
                     boolean applied = applicationRepository.findByJobIdAndTeacherId(job.getId(), teacherId).isPresent();
                     return JobWithScoreDTO.builder()
                             .id(job.getId())
-                            .title(job.getTitle())
+                            .titre(job.getTitre())
+                            .nbPlaces(job.getNbPlaces())
                             .description(job.getDescription())
+                            .requirements(job.getRequirements())
                             .location(job.getLocation())
                             .subject(job.getSubject())
                             .salaryMin(job.getSalaryMin())
@@ -111,7 +135,8 @@ public class JobService {
                             .status(job.getStatus())
                             .createdAt(job.getCreatedAt())
                             .expiresAt(job.getExpiresAt())
-                            .matchScore(score)
+                            .deadline(job.getDeadline())
+                            .matchScore((double) score)
                             .saved(saved)
                             .applied(applied)
                             .build();
@@ -119,7 +144,6 @@ public class JobService {
                 .collect(Collectors.toList());
     }
 
-    /** Process scheduled publications (called by scheduler). */
     public void publishScheduledJobs() {
         List<JobPublicationSchedule> due = scheduleRepository
                 .findByPublishedFalseAndScheduledAtBefore(LocalDateTime.now());

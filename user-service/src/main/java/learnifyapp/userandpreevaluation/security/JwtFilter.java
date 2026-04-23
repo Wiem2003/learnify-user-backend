@@ -58,7 +58,11 @@ public class JwtFilter extends OncePerRequestFilter {
                         || path.startsWith("/api/webauthn/authenticate/verify")
 
                         // uploads
-                        || path.startsWith("/uploads/");
+                        || path.startsWith("/uploads/")
+
+                        // OpenAPI
+                        || path.startsWith("/v3/api-docs")
+                        || path.startsWith("/swagger-ui");
 
         if (isPublic) {
             filterChain.doFilter(request, response);

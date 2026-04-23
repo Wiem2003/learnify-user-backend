@@ -28,7 +28,7 @@ public class JobExpirationScheduler {
             job.setStatus(JobStatus.EXPIRED);
             jobRepository.save(job);
             notificationService.notifyJobExpired(job);
-            log.info("Job expired: [{}] {}", job.getId(), job.getTitle());
+            log.info("Job expired: [{}] {}", job.getId(), job.getTitre());
         }
     }
 
@@ -41,6 +41,6 @@ public class JobExpirationScheduler {
     /** Run every hour: send 24h meeting reminders. */
     @Scheduled(fixedRate = 3_600_000)
     public void sendMeetingReminders() {
-        notificationService.ensureTeacherNotificationsForMeetings();
+        notificationService.ensureTeacherNotificationsForAllTeachers();
     }
 }

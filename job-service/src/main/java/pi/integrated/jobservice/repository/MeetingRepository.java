@@ -2,6 +2,7 @@ package pi.integrated.jobservice.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import pi.integrated.jobservice.model.Meeting;
 
@@ -19,8 +20,9 @@ public interface MeetingRepository extends JpaRepository<Meeting, Long> {
     // Find meetings assigned to a specific evaluator (plain Long column)
     List<Meeting> findByAssignedToId(Long assignedToId);
 
-    // Find meetings by application
-    List<Meeting> findByApplicationId(Long applicationId);
+    /** Explicite : évite toute ambiguïté Spring Data sur `application` vs `applicationId`. */
+    @Query("SELECT m FROM Meeting m WHERE m.application.id = :applicationId")
+    List<Meeting> findByApplicationId(@Param("applicationId") Long applicationId);
 
     // Find next upcoming meeting for a user (either as teacher or evaluator)
     @Query("SELECT m FROM Meeting m JOIN m.application a " +
@@ -28,4 +30,6 @@ public interface MeetingRepository extends JpaRepository<Meeting, Long> {
            "AND m.meetingDate > :now " +
            "ORDER BY m.meetingDate ASC")
     Optional<Meeting> findNextMeetingForUser(Long userId, LocalDateTime now);
+
+    Optional<Meeting> findByMeetRoomName(String meetRoomName);
 }

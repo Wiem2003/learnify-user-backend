@@ -9,6 +9,8 @@ import org.springframework.web.server.ResponseStatusException;
 import pi.integrated.preevaluation.dto.*;
 import pi.integrated.preevaluation.security.JwtUserPrincipal;
 
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api/preevaluation")
 @RequiredArgsConstructor
@@ -22,6 +24,16 @@ public class PreevaluationController {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Missing or invalid Bearer token");
         }
         return principal;
+    }
+
+    /** Point de contrôle inter-services (Feign / Eureka) — public, sans JWT. */
+    @GetMapping("/internal/health")
+    public Map<String, Object> internalHealth() {
+        return Map.of(
+                "service", "preevaluation-service",
+                "purpose", "feign-sync-demo-target",
+                "status", "UP"
+        );
     }
 
     @GetMapping("/status")

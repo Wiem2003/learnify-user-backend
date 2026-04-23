@@ -43,6 +43,7 @@ public class GoogleUserService {
 
         User u = new User();
         u.setEmail(email);
+        u.setUsername(email.toLowerCase().replaceAll("[^a-z0-9]", "_"));
         u.setFirstName(firstName);
         u.setLastName(lastName);
 

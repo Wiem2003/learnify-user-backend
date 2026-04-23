@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.security.Key;
+import java.util.Collection;
 import java.util.Date;
 
 @Component
@@ -31,8 +32,37 @@ public class JwtUtil {
         return extractClaims(token).getSubject();
     }
 
+    /**
+     * Claim {@code role} (string, liste, ou autre), sinon premier élément de {@code authorities}.
+     */
     public String extractRole(String token) {
-        return extractClaims(token).get("role", String.class);
+        Claims c = extractClaims(token);
+        String asStr = c.get("role", String.class);
+        if (asStr != null && !asStr.isBlank()) {
+            return asStr.trim();
+        }
+        Object roleObj = c.get("role");
+        if (roleObj instanceof Collection<?> list && !list.isEmpty()) {
+            Object item = list.iterator().next();
+            if (item == null) {
+                return null;
+            }
+            String s = item.toString().trim();
+            return s.isEmpty() ? null : s;
+        }
+        if (roleObj != null) {
+            String s = roleObj.toString().trim();
+            return s.isEmpty() ? null : s;
+        }
+        Object auths = c.get("authorities");
+        if (auths instanceof Collection<?> col && !col.isEmpty()) {
+            String a = col.iterator().next().toString().trim();
+            if (a.startsWith("ROLE_")) {
+                return a.substring(5).trim();
+            }
+            return a.isEmpty() ? null : a;
+        }
+        return null;
     }
 
     public Long extractUserId(String token) {

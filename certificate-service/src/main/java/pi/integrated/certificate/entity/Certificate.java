@@ -51,6 +51,12 @@ public class Certificate {
     @Column(name = "pdf_path")
     private String pdfPath;
     
+    @Column(name = "qr_code_path")
+    private String qrCodePath;
+
+    @Column(name = "ai_description", columnDefinition = "TEXT")
+    private String aiDescription;
+    
     @Column(name = "verification_code")
     private String verificationCode;
     

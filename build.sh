@@ -1,35 +1,51 @@
-#!/bin/sh
-set -e
+#!/bin/bash
+# ─────────────────────────────────────────────────────────────────────────────
+# build.sh — Build all Spring Boot jars then Docker images
+# Run from: merge_integ/integrated/
+# Usage:  chmod +x build.sh && ./build.sh
+# ─────────────────────────────────────────────────────────────────────────────
 
-INTEGRATED_DIR="$(cd "$(dirname "$0")" && pwd)"
-M2_CACHE="$HOME/.m2"
-BUILDER_IMAGE="maven-builder"
+set -e  # stop on first error
 
-SERVICES="event-service payment-service certificate-service quiz-feedback-service ai-service course-service user-service eureka-server api-gateway job-service"
+SERVICES_JAVA=(
+  "eureka-server"
+  "config-server"
+  "event-service"
+  "payment-service"
+  "certificate-service"
+  "quiz-feedback-service"
+  "ai-service"
+  "course-service"
+  "user-service"
+  "job-service"
+  "preevaluation-service"
+  "club-service"
+  "api-gateway"
+)
 
-# Build the cached builder image once if it doesn't exist
-if ! docker image inspect "$BUILDER_IMAGE" > /dev/null 2>&1; then
-  echo "==> Building maven-builder image (one-time setup)..."
-  docker build -t maven-builder - <<'EOF'
-FROM eclipse-temurin:17-jdk-alpine
-RUN apk add --no-cache maven
-EOF
-  echo "==> maven-builder image ready"
-else
-  echo "==> maven-builder image already exists, skipping build"
-fi
+echo "======================================================"
+echo "  STEP 1 — Building Spring Boot JARs (Maven)"
+echo "======================================================"
 
-for svc in $SERVICES; do
-  echo ""
-  echo "==> Building $svc ..."
-  docker run --rm \
-    -v "$INTEGRATED_DIR/$svc":/app \
-    -v "$M2_CACHE":/root/.m2 \
-    -w /app \
-    "$BUILDER_IMAGE" \
-    sh -c "mvn clean package -DskipTests --no-transfer-progress"
-  echo "==> $svc JAR built successfully"
+for svc in "${SERVICES_JAVA[@]}"; do
+  if [ -d "$svc" ] && [ -f "$svc/pom.xml" ]; then
+    echo ""
+    echo "▶ Building $svc ..."
+    (cd "$svc" && mvn clean package -DskipTests -q)
+    echo "✓ $svc — done"
+  else
+    echo "⚠ Skipping $svc (folder or pom.xml not found)"
+  fi
 done
 
 echo ""
-echo "==> All JARs built. Run: docker compose up --build"
+echo "======================================================"
+echo "  STEP 2 — Building Docker images"
+echo "======================================================"
+
+docker-compose build
+
+echo ""
+echo "======================================================"
+echo "  ALL DONE — Run with: docker-compose up -d"
+echo "======================================================"

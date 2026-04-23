@@ -54,6 +54,9 @@ public class SecurityConfig {
                         // ✅ fichiers upload
                         .requestMatchers("/uploads/**").permitAll()
 
+                        // OpenAPI / Swagger UI
+                        .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+
                         // ADMIN (backoffice: list/delete users, create admin/tutor)
                         .requestMatchers("/api/users/admin/**").hasAuthority("ADMIN")
                         .requestMatchers("/api/admin/**").hasAuthority("ADMIN")

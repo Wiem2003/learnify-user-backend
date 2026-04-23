@@ -46,6 +46,12 @@ public class UserController {
         return userService.createTutor(request);
     }
 
+    /** Création candidat par admin (rôle CANDIDATE) — même chemin « sous /users/admin » que create-tutor (gateway + proxy). */
+    @PostMapping("/admin/create-candidate")
+    public User createCandidateByAdmin(@RequestBody RegisterRequest request) {
+        return userService.registerCandidate(request);
+    }
+
     /** Liste des tuteurs (cours, backoffice) — tout utilisateur authentifié, comme le front Learnify. */
     @GetMapping("/tutors")
     public List<User> listTutors() {

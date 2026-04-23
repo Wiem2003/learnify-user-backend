@@ -17,15 +17,19 @@ public class JwtUtil {
 
     private final Key key = Keys.hmacShaKeyFor(SECRET_KEY.getBytes());
 
-    public String generateToken(String email, String role) {
-
-        return Jwts.builder()
+    /**
+     * @param userId id utilisateur (réclamé par les autres microservices, ex. job-service).
+     */
+    public String generateToken(String email, String role, Long userId) {
+        var b = Jwts.builder()
                 .setSubject(email)
                 .claim("role", role)
                 .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + 1000 * 60 * 60 * 10))
-                .signWith(key, SignatureAlgorithm.HS256)
-                .compact();
+                .setExpiration(new Date(System.currentTimeMillis() + 1000 * 60 * 60 * 10));
+        if (userId != null) {
+            b.claim("userId", userId);
+        }
+        return b.signWith(key, SignatureAlgorithm.HS256).compact();
     }
 
     public Claims extractClaims(String token) {

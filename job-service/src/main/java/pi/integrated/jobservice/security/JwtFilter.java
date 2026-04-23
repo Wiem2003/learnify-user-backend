@@ -35,8 +35,17 @@ public class JwtFilter extends OncePerRequestFilter {
 
         String authHeader = request.getHeader("Authorization");
 
-        if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            String token = authHeader.substring(7);
+        if (authHeader != null) {
+            String trimmed = authHeader.trim();
+            if (!trimmed.regionMatches(true, 0, "Bearer ", 0, 7)) {
+                filterChain.doFilter(request, response);
+                return;
+            }
+            String token = trimmed.substring(7).trim();
+            if (token.isEmpty()) {
+                filterChain.doFilter(request, response);
+                return;
+            }
             try {
                 if (!jwtUtil.isTokenExpired(token)) {
                     String email = jwtUtil.extractEmail(token);
@@ -44,13 +53,22 @@ public class JwtFilter extends OncePerRequestFilter {
                     Long userId = jwtUtil.extractUserId(token);
                     String name = jwtUtil.extractName(token);
 
-                    if (email != null && role != null
-                            && SecurityContextHolder.getContext().getAuthentication() == null) {
+                    if (email != null && role != null && !role.isBlank()) {
+                        /*
+                         * Toujours poser l’auth JWT quand le token est valide.
+                         * Avant : on exigeait getAuthentication() == null — Spring met souvent une
+                         * AnonymousAuthenticationToken, donc le JWT n’était jamais appliqué → 403 sur hasRole.
+                         */
+                        String normalized = role.trim();
+                        if (normalized.toUpperCase().startsWith("ROLE_")) {
+                            normalized = normalized.substring(5);
+                        }
+                        normalized = normalized.toUpperCase();
                         UsernamePasswordAuthenticationToken auth =
                                 new UsernamePasswordAuthenticationToken(
                                         email,
                                         null,
-                                        List.of(new SimpleGrantedAuthority("ROLE_" + role))
+                                        List.of(new SimpleGrantedAuthority("ROLE_" + normalized))
                                 );
                         SecurityContextHolder.getContext().setAuthentication(auth);
                     }

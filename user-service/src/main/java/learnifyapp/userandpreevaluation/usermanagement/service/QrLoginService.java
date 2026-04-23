@@ -160,7 +160,7 @@ public class QrLoginService {
         session.setUsedAt(LocalDateTime.now());
         qrLoginSessionRepository.save(session);
 
-        String token = jwtUtil.generateToken(user.getEmail(), user.getRole().name());
+        String token = jwtUtil.generateToken(user.getEmail(), user.getRole().name(), user.getId());
 
         String ip = request.getHeader("X-Forwarded-For");
         if (ip == null || ip.isBlank()) ip = request.getRemoteAddr();

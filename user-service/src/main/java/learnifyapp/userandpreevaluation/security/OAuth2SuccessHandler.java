@@ -34,6 +34,10 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
     @Value("${app.oauth2-redirect-base:http://localhost:4200}")
     private String oauth2RedirectBase;
 
+    /** Même règle que UserService.login : si false, nouvel appareil → e-mail + pending (OAuth ignorait ce flag avant). */
+    @Value("${app.skip-device-confirmation:false}")
+    private boolean skipDeviceConfirmation;
+
     public OAuth2SuccessHandler(JwtUtil jwtUtil,
                                 GoogleUserService googleUserService,
                                 DeviceService deviceService,
@@ -136,10 +140,10 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
                 .build();
 
         // - si SIGNUP + new user => trust device direct
-        // - sinon => checkDeviceOrCreateAttempt (pending si nouveau)
+        // - sinon => checkDeviceOrCreateAttempt (pending si nouveau), sauf si skip-device-confirmation
         if ("SIGNUP".equals(desiredMode) && isNewUser) {
             deviceService.trustDeviceOnSignup(user, info);
-        } else {
+        } else if (!skipDeviceConfirmation) {
             String st = deviceService.checkDeviceOrCreateAttempt(user, info, "GOOGLE", desiredMode);
 
             // ✅ PENDING => on envoie aussi token au frontend
@@ -155,7 +159,7 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
         userService.createSessionFor(user.getEmail(), userAgent, ip);
 
         // 5) JWT + redirect
-        String token = jwtUtil.generateToken(user.getEmail(), user.getRole().name());
+        String token = jwtUtil.generateToken(user.getEmail(), user.getRole().name(), user.getId());
         clearOAuthState(request, response);
         response.sendRedirect(oauth2RedirectUrl() + "?token=" + enc(token));
     }

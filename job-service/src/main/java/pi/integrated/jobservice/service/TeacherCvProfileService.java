@@ -19,7 +19,7 @@ public class TeacherCvProfileService {
 
     public TeacherCvProfile uploadCv(Long userId, MultipartFile cvFile) {
         String path = fileStorageService.storeFile(cvFile, "cv-profiles");
-        String extractedText = cvTextExtractionService.extractTextFromPdf(cvFile);
+        String extractedText = cvTextExtractionService.extractText(cvFile);
 
         TeacherCvProfile profile = profileRepository.findByUserId(userId)
                 .orElse(new TeacherCvProfile());

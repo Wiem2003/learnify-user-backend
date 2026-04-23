@@ -29,6 +29,12 @@ public class AdminController {
         return userService.createAdmin(request);
     }
 
+    /** Compte candidat (rôle CANDIDATE) — même règles que l’inscription publique, réservé aux admins. */
+    @PostMapping("/create-candidate")
+    public User createCandidate(@RequestBody RegisterRequest request) {
+        return userService.registerCandidate(request);
+    }
+
     @GetMapping("/users")
     public List<UserResponse> getAllUsers() {
         List<User> users = userService.getAllUsers();

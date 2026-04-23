@@ -120,7 +120,8 @@ public class EventServiceImp implements IEventService {
         List<Object[]> categoryData = eventRepository.countEventsByCategory();
         Map<String, Long> eventsByCategory = new java.util.HashMap<>();
         for (Object[] row : categoryData) {
-            eventsByCategory.put(row[0].toString(), (Long) row[1]);
+            long n = (row[1] instanceof Number) ? ((Number) row[1]).longValue() : 0L;
+            eventsByCategory.put(String.valueOf(row[0]), n);
         }
         
         return EventStatistics.builder()

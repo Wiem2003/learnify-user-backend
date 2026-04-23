@@ -4,9 +4,10 @@ import jakarta.persistence.*;
 import lombok.*;
 import learnifyapp.userandpreevaluation.usermanagement.enums.Role;
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import jakarta.persistence.Column;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
-
+import java.time.LocalDateTime;
 
 
 @Entity
@@ -27,8 +28,18 @@ public class User {
     @Column(nullable = false)
     private String lastName;
 
+    /**
+     * Colonne MySQL {@code name} (souvent legacy / contrainte NOT NULL sans défaut).
+     * Renseignée automatiquement à partir de prénom + nom.
+     */
+    @Column(name = "name", nullable = false, length = 512)
+    private String name;
+
     @Column(unique = true, nullable = false)
     private String email;
+
+    @Column(unique = true, nullable = false)
+    private String username;
 
     @Column(nullable = false)
     @JsonIgnore
@@ -57,6 +68,33 @@ public class User {
     /** Niveau final issu du microservice preevaluation-service (nullable). */
     @Column(name = "preevaluation_final_level", length = 8)
     private String preevaluationFinalLevel;
+
+    @CreationTimestamp
+    @Column(name = "created_at", nullable = false, updatable = false, columnDefinition = "DATETIME DEFAULT CURRENT_TIMESTAMP")
+    private LocalDateTime createdAt;
+
+    @UpdateTimestamp
+    @Column(name = "updated_at", columnDefinition = "DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP")
+    private LocalDateTime updatedAt;
+
+    @PrePersist
+    @PreUpdate
+    private void syncLegacyNameColumn() {
+        String fn = firstName != null ? firstName.trim() : "";
+        String ln = lastName != null ? lastName.trim() : "";
+        String combined = (fn + " " + ln).trim();
+        if (!combined.isEmpty()) {
+            this.name = combined.length() > 512 ? combined.substring(0, 512) : combined;
+        } else if (this.name == null || this.name.isBlank()) {
+            if (username != null && !username.isBlank()) {
+                this.name = username.length() > 512 ? username.substring(0, 512) : username;
+            } else if (email != null && !email.isBlank()) {
+                this.name = email.length() > 512 ? email.substring(0, 512) : email;
+            } else {
+                this.name = "User";
+            }
+        }
+    }
 
     public String getAppPinHash() { return appPinHash; }
     public void setAppPinHash(String appPinHash) { this.appPinHash = appPinHash; }

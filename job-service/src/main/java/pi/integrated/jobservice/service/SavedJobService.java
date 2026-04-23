@@ -41,7 +41,14 @@ public class SavedJobService {
         return savedJobRepository.findByUserId(userId);
     }
 
+    public List<Long> getSavedJobIds(Long userId) {
+        return savedJobRepository.findByUserId(userId).stream()
+                .map(sj -> sj.getJob().getId())
+                .collect(java.util.stream.Collectors.toList());
+    }
+
     public boolean isSaved(Long userId, Long jobId) {
         return savedJobRepository.existsByUserIdAndJobId(userId, jobId);
     }
 }
+

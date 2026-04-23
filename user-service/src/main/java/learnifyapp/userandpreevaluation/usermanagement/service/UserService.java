@@ -19,10 +19,13 @@ import learnifyapp.userandpreevaluation.usermanagement.repository.KnownDeviceRep
 import learnifyapp.userandpreevaluation.usermanagement.repository.PasswordResetTokenRepository;
 import learnifyapp.userandpreevaluation.usermanagement.repository.UnblockPinTokenRepository;
 import learnifyapp.userandpreevaluation.usermanagement.repository.UserRepository;
+import learnifyapp.userandpreevaluation.messaging.UserRegistrationEventPublisher;
 import learnifyapp.userandpreevaluation.usermanagement.repository.UserSessionRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -53,6 +56,7 @@ public class UserService {
     private final UnblockPinTokenRepository unblockPinTokenRepository;
 
     private final DeviceService deviceService;
+    private final UserRegistrationEventPublisher userRegistrationEventPublisher;
 
     private static final int MAX_FAILED_ATTEMPTS = 3;
     private static final Duration LOCKOUT_DURATION = Duration.ofMinutes(15);
@@ -73,7 +77,8 @@ public class UserService {
                        DeviceService deviceService,
                        DeviceLoginAttemptRepository deviceLoginAttemptRepository,
                        KnownDeviceRepository knownDeviceRepository,
-                       UnblockPinTokenRepository unblockPinTokenRepository) {
+                       UnblockPinTokenRepository unblockPinTokenRepository,
+                       UserRegistrationEventPublisher userRegistrationEventPublisher) {
 
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
@@ -85,6 +90,7 @@ public class UserService {
         this.deviceLoginAttemptRepository = deviceLoginAttemptRepository;
         this.knownDeviceRepository = knownDeviceRepository;
         this.unblockPinTokenRepository = unblockPinTokenRepository;
+        this.userRegistrationEventPublisher = userRegistrationEventPublisher;
     }
 
     private static String normalizeEmail(String email) {
@@ -110,6 +116,7 @@ public class UserService {
         user.setFirstName(request.getFirstName());
         user.setLastName(request.getLastName());
         user.setEmail(email);
+        user.setUsername(email.toLowerCase().replaceAll("[^a-z0-9]", "_"));
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setRole(Role.STUDENT);
 
@@ -139,10 +146,13 @@ public class UserService {
         user.setFirstName(request.getFirstName());
         user.setLastName(request.getLastName());
         user.setEmail(email);
+        user.setUsername(email.toLowerCase().replaceAll("[^a-z0-9]", "_"));
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setRole(Role.CANDIDATE);
 
-        return userRepository.save(user);
+        User saved = userRepository.save(user);
+        userRegistrationEventPublisher.publish(saved.getId(), saved.getEmail());
+        return saved;
     }
 
     private static final String LEARNIFY_DOMAIN = "@learnify.com";
@@ -261,7 +271,7 @@ public class UserService {
         email = email.trim().toLowerCase();
 
         User user = userRepository.findByEmailIgnoreCase(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new BadCredentialsException("User not found"));
 
         // ✅ Compte bloqué après 3 tentatives échouées (15 min)
         LocalDateTime now = LocalDateTime.now();
@@ -278,7 +288,7 @@ public class UserService {
                 throw new AccountLockedException("Account locked for 15 minutes. Use 'Unblock with PIN' to receive a PIN by email.", user.getLockedUntil());
             }
             userRepository.save(user);
-            throw new RuntimeException("Invalid credentials");
+            throw new BadCredentialsException("Invalid credentials");
         }
 
         // ✅ Succès : réinitialiser tentatives et blocage
@@ -294,13 +304,13 @@ public class UserService {
         // ✅ Domain rule seulement si role demandé = ADMIN/TUTOR
         if ("ADMIN".equalsIgnoreCase(role) || "TUTOR".equalsIgnoreCase(role)) {
             if (!email.endsWith(LEARNIFY_DOMAIN)) {
-                throw new RuntimeException("Admin and Tutor must login with their Learnify email (@learnify.com)");
+                throw new AccessDeniedException("Admin and Tutor must login with their Learnify email (@learnify.com)");
             }
         }
 
         // ✅ Space check
         if (!user.getRole().name().equalsIgnoreCase(role)) {
-            throw new RuntimeException("Access denied: wrong space for this account");
+            throw new AccessDeniedException("Access denied: wrong space for this account");
         }
 
         // ✅ 1) check device first (no token yet) — skip if app.skip-device-confirmation=true (e.g. dev / no gateway)
@@ -323,7 +333,7 @@ public class UserService {
         }
 
         // ✅ 2) device connu => générer JWT
-        String token = jwtUtil.generateToken(email, user.getRole().name());
+        String token = jwtUtil.generateToken(email, user.getRole().name(), user.getId());
 
         // ✅ 3) save active session only if device known
         UserSession s = new UserSession();

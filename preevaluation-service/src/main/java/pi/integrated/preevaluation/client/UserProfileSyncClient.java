@@ -2,12 +2,7 @@ package pi.integrated.preevaluation.client;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestTemplate;
 
 import java.util.Map;
 
@@ -16,32 +11,25 @@ public class UserProfileSyncClient {
 
     private static final Logger log = LoggerFactory.getLogger(UserProfileSyncClient.class);
 
-    private final RestTemplate loadBalancedRestTemplate;
+    private final UserProfileFeignClient userProfileFeignClient;
 
-    public UserProfileSyncClient(RestTemplate loadBalancedRestTemplate) {
-        this.loadBalancedRestTemplate = loadBalancedRestTemplate;
+    public UserProfileSyncClient(UserProfileFeignClient userProfileFeignClient) {
+        this.userProfileFeignClient = userProfileFeignClient;
     }
 
     /**
      * Met à jour le champ profil côté user-service (même JWT que l’appel préévaluation).
+     * Implémenté via OpenFeign (appel synchrone inter-MS).
      */
     public void syncFinalLevel(String authorizationBearer, String finalLevel) {
         if (authorizationBearer == null || authorizationBearer.isBlank() || finalLevel == null) {
             return;
         }
         try {
-            HttpHeaders headers = new HttpHeaders();
-            headers.set(HttpHeaders.AUTHORIZATION, authorizationBearer.startsWith("Bearer ")
+            String auth = authorizationBearer.startsWith("Bearer ")
                     ? authorizationBearer
-                    : "Bearer " + authorizationBearer);
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            HttpEntity<Map<String, String>> entity = new HttpEntity<>(Map.of("finalLevel", finalLevel), headers);
-            loadBalancedRestTemplate.exchange(
-                    "http://user-service/api/users/me/preevaluation-final-level",
-                    HttpMethod.PUT,
-                    entity,
-                    Void.class
-            );
+                    : "Bearer " + authorizationBearer;
+            userProfileFeignClient.syncPreevaluationFinalLevel(auth, Map.of("finalLevel", finalLevel));
         } catch (Exception e) {
             log.warn("Impossible de synchroniser le niveau final vers user-service: {}", e.getMessage());
         }

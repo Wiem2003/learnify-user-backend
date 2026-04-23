@@ -14,8 +14,10 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 public class JobWithScoreDTO {
     private Long id;
-    private String title;
+    private String titre;
+    private Integer nbPlaces;
     private String description;
+    private String requirements;
     private String location;
     private String subject;
     private Double salaryMin;
@@ -23,6 +25,8 @@ public class JobWithScoreDTO {
     private JobStatus status;
     private LocalDateTime createdAt;
     private LocalDateTime expiresAt;
+    private LocalDateTime deadline;
+
     private Double matchScore;
     private boolean saved;
     private boolean applied;

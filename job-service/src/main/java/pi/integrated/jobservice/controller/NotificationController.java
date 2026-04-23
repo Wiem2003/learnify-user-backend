@@ -38,8 +38,9 @@ public class NotificationController {
     }
 
     @PutMapping("/{id}/read")
-    public ResponseEntity<Void> markRead(@PathVariable Long id) {
-        notificationService.markRead(id);
+    public ResponseEntity<Void> markRead(@PathVariable Long id, HttpServletRequest request) {
+        Long userId = (Long) request.getAttribute("userId");
+        notificationService.markRead(id, userId);
         return ResponseEntity.ok().build();
     }
 }

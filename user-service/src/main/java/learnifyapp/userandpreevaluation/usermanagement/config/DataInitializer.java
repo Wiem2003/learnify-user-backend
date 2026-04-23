@@ -7,12 +7,16 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 @Configuration
+@Order(2)
 public class DataInitializer {
 
     private static final String ADMIN_EMAIL = "admin@learnify.com";
+    /** Obligatoire en base (NOT NULL + unique), aligné sur l’inscription (username dérivé de l’e-mail). */
+    private static final String ADMIN_USERNAME = "admin";
 
     @Value("${learnify.dev.reset-admin-password:false}")
     private boolean resetAdminPassword;
@@ -28,6 +32,7 @@ public class DataInitializer {
                 admin.setFirstName("System");
                 admin.setLastName("Admin");
                 admin.setEmail(ADMIN_EMAIL);
+                admin.setUsername(ADMIN_USERNAME);
 
                 admin.setPassword(passwordEncoder.encode("admin123"));
 

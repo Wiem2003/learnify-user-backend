@@ -29,12 +29,28 @@ public class Application {
     private String motivation;
 
     private String cvPath;
+    
+    @Column(name = "cv_extracted_text", columnDefinition = "TEXT")
+    private String cvExtractedText;
+
     private String certificatPath;
+
+    @Column(name = "video_pitch_path")
+    private String videoPitchPath;
 
     @Enumerated(EnumType.STRING)
     private ApplicationStatus status;
+
+    @org.hibernate.annotations.CreationTimestamp
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+
+    @org.hibernate.annotations.UpdateTimestamp
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
 
     private LocalDateTime appliedAt;
 
     private Double matchScore;
 }
+

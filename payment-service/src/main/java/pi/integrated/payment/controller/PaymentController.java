@@ -110,4 +110,20 @@ public class PaymentController {
         paymentService.deletePayment(id);
         return ResponseEntity.ok(ApiResponse.success("Payment deleted successfully", null));
     }
+
+    @GetMapping("/check")
+    @Operation(summary = "Check if user has paid for a course")
+    public ResponseEntity<ApiResponse<Boolean>> checkPayment(
+            @RequestParam Long userId,
+            @RequestParam Long courseId) {
+        boolean paid = paymentService.hasUserPaidForCourse(userId, courseId);
+        return ResponseEntity.ok(ApiResponse.success(paid));
+    }
+
+    @GetMapping("/user/{userId}/courses")
+    @Operation(summary = "Get all paid course IDs for a user")
+    public ResponseEntity<ApiResponse<List<Long>>> getPaidCourseIds(@PathVariable Long userId) {
+        List<Long> courseIds = paymentService.getPaidCourseIds(userId);
+        return ResponseEntity.ok(ApiResponse.success(courseIds));
+    }
 }

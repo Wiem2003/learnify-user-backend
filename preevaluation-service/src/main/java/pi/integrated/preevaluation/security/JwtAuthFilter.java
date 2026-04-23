@@ -36,6 +36,10 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             filterChain.doFilter(request, response);
             return;
         }
+        if (path != null && path.contains("/api/preevaluation/internal/health")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
 
         String header = request.getHeader(HttpHeaders.AUTHORIZATION);
         if (header != null && header.startsWith("Bearer ")) {

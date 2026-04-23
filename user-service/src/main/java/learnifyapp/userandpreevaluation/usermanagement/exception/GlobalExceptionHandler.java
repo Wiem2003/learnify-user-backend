@@ -6,6 +6,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -57,11 +59,22 @@ public class GlobalExceptionHandler {
                 .body(new ApiErrorResponse("ERROR", "Could not complete the request."));
     }
 
-    @ExceptionHandler(RuntimeException.class)
-    public ResponseEntity<ApiErrorResponse> handleRuntime(RuntimeException ex) {
-        log.error("Request failed with RuntimeException", ex);
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(new ApiErrorResponse("ERROR", ex.getMessage() != null ? ex.getMessage() : "An error occurred"));
+    /** Wrong password / unknown user at login — not HTTP 400 "bad request". */
+    @ExceptionHandler(BadCredentialsException.class)
+    public ResponseEntity<ApiErrorResponse> handleBadCredentials(BadCredentialsException ex) {
+        log.warn("Login failed: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(new ApiErrorResponse("INVALID_CREDENTIALS",
+                        ex.getMessage() != null ? ex.getMessage() : "Invalid credentials"));
+    }
+
+    /** Wrong role tab / non-Learnify email for staff login. */
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ApiErrorResponse> handleAccessDenied(AccessDeniedException ex) {
+        log.warn("Access denied: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(new ApiErrorResponse("ACCESS_DENIED",
+                        ex.getMessage() != null ? ex.getMessage() : "Access denied"));
     }
 
     @ExceptionHandler(DeviceConfirmationRequiredException.class)
@@ -81,5 +94,16 @@ public class GlobalExceptionHandler {
                         "ACTIVE_SESSIONS",
                         ex.getMessage()
                 ));
+    }
+
+    /**
+     * Broad fallback — must stay last so subclasses of {@link RuntimeException} above
+     * (device pending, bad credentials, etc.) are not swallowed here.
+     */
+    @ExceptionHandler(RuntimeException.class)
+    public ResponseEntity<ApiErrorResponse> handleRuntime(RuntimeException ex) {
+        log.error("Request failed with RuntimeException", ex);
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ApiErrorResponse("ERROR", ex.getMessage() != null ? ex.getMessage() : "An error occurred"));
     }
 }

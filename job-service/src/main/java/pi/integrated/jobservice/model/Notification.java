@@ -18,10 +18,24 @@ public class Notification {
     private Long id;
 
     private Long userId;
-
+    private String title;
     private String message;
+    
+    @Enumerated(EnumType.STRING)
+    private NotificationType type;
 
-    private boolean read;
+    private Long meetingId;
 
+    @Column(name = "is_read")
+    private boolean isRead;
+
+    @org.hibernate.annotations.CreationTimestamp
     private LocalDateTime createdAt;
+
+    public enum NotificationType {
+        MEETING_SCHEDULED,
+        JOB_EXPIRED,
+        GENERAL
+    }
 }
+

@@ -56,6 +56,26 @@ public class EventController {
                 .toList();
     }
 
+    // 🔍 Recherche et filtrage avec pagination (avant /{id} pour ne pas capturer "search")
+    @GetMapping("/search")
+    public ResponseEntity<Page<Event>> searchAndFilter(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) EventCategory category,
+            @RequestParam(required = false) EventStatus status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+
+        Page<Event> events = eventService.searchAndFilterEvents(keyword, category, status, page, size);
+        return ResponseEntity.ok(events);
+    }
+
+    // 📊 Statistiques (Admin) — avant /{id} pour ne pas capturer "statistics"
+    @GetMapping("/statistics")
+    public ResponseEntity<EventStatistics> getStatistics() {
+        EventStatistics stats = eventService.getStatistics();
+        return ResponseEntity.ok(stats);
+    }
+
     // 📌 Un événement spécifique
     @GetMapping("/{id}")
     public Event getOne(@PathVariable Long id) {
@@ -245,26 +265,6 @@ public class EventController {
             participant.setFullName("Anonymous");
         }
         return eventService.reserveEvent(id, participant);
-    }
-
-    // 🔍 Recherche et filtrage avec pagination
-    @GetMapping("/search")
-    public ResponseEntity<Page<Event>> searchAndFilter(
-            @RequestParam(required = false) String keyword,
-            @RequestParam(required = false) EventCategory category,
-            @RequestParam(required = false) EventStatus status,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
-        
-        Page<Event> events = eventService.searchAndFilterEvents(keyword, category, status, page, size);
-        return ResponseEntity.ok(events);
-    }
-
-    // 📊 Statistiques (Admin)
-    @GetMapping("/statistics")
-    public ResponseEntity<EventStatistics> getStatistics() {
-        EventStatistics stats = eventService.getStatistics();
-        return ResponseEntity.ok(stats);
     }
 
     // 🔄 Changer le status d'un événement (Admin)

@@ -31,4 +31,17 @@ public class Meeting {
     private String notes;
 
     private String meetingLink;
+    private String meetRoomName;
+
+    @Builder.Default
+    private Integer durationMinutes = 60;
+
+    // Evaluation scores
+    private Integer scoreTechnical;
+    private Integer scoreCommunication;
+    private Integer scoreEnglish;
+
+    @Column(columnDefinition = "TEXT")
+    private String recommendation;
 }
+

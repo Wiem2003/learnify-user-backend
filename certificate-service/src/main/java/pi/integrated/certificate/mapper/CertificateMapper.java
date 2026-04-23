@@ -25,6 +25,8 @@ public class CertificateMapper {
         dto.setGrade(certificate.getGrade());
         dto.setStatus(certificate.getStatus());
         dto.setPdfPath(certificate.getPdfPath());
+        dto.setQrCodePath(certificate.getQrCodePath());
+        dto.setAiDescription(certificate.getAiDescription());
         dto.setVerificationCode(certificate.getVerificationCode());
         dto.setCreatedAt(certificate.getCreatedAt());
         dto.setUpdatedAt(certificate.getUpdatedAt());

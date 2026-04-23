@@ -1,5 +1,6 @@
 package pi.integrated.jobservice.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -18,13 +19,19 @@ public class Job {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String title;
+    /** Colonne SQL `titre` (schéma Learnify / backend Learn). */
+    @Column(nullable = false)
+    private String titre;
+
+    private Integer nbPlaces;
 
     @Column(columnDefinition = "TEXT")
     private String description;
 
-    private String location;
+    @Column(columnDefinition = "TEXT")
+    private String requirements;
 
+    private String location;
     private String subject;
 
     private Double salaryMin;
@@ -33,9 +40,15 @@ public class Job {
     @Enumerated(EnumType.STRING)
     private JobStatus status;
 
+    @org.hibernate.annotations.CreationTimestamp
     private LocalDateTime createdAt;
+    
     private LocalDateTime expiresAt;
+    private LocalDateTime deadline;
 
+
+    /** Exclu du JSON : évite cycles + accès lazy hors transaction sur GET /api/jobs. */
+    @JsonIgnore
     @OneToMany(mappedBy = "job", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Application> applications;
 }

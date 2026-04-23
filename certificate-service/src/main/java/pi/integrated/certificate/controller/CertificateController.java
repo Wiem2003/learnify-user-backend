@@ -56,4 +56,18 @@ public class CertificateController {
         Long count = certificateService.getCertificateCount();
         return ResponseEntity.ok(ApiResponse.success(count));
     }
+
+    @GetMapping("/verify/{verificationCode}")
+    @Operation(summary = "Verify certificate by QR code")
+    public ResponseEntity<ApiResponse<CertificateDTO>> verify(@PathVariable String verificationCode) {
+        CertificateDTO cert = certificateService.verifyByCode(verificationCode);
+        return ResponseEntity.ok(ApiResponse.success(cert));
+    }
+
+    @GetMapping("/user/{userId}")
+    @Operation(summary = "Get certificates by user")
+    public ResponseEntity<ApiResponse<List<CertificateDTO>>> getByUser(@PathVariable Long userId) {
+        List<CertificateDTO> certs = certificateService.getCertificatesByUser(userId);
+        return ResponseEntity.ok(ApiResponse.success(certs));
+    }
 }

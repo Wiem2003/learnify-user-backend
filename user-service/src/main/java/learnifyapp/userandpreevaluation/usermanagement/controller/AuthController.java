@@ -1,6 +1,7 @@
 package learnifyapp.userandpreevaluation.usermanagement.controller;
 
 import jakarta.servlet.http.HttpServletRequest;
+import learnifyapp.userandpreevaluation.usermanagement.dto.ApiErrorResponse;
 import learnifyapp.userandpreevaluation.usermanagement.dto.ForgotPasswordRequest;
 import learnifyapp.userandpreevaluation.usermanagement.dto.LoginRequest;
 import learnifyapp.userandpreevaluation.usermanagement.dto.LoginResponse;
@@ -11,7 +12,10 @@ import learnifyapp.userandpreevaluation.usermanagement.entity.User;
 import learnifyapp.userandpreevaluation.usermanagement.exception.AccountLockedException;
 import learnifyapp.userandpreevaluation.usermanagement.exception.DeviceConfirmationRequiredException;
 import learnifyapp.userandpreevaluation.usermanagement.service.UserService;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -84,6 +88,14 @@ public class AuthController {
                     "message", ex.getMessage(),
                     "lockedUntil", ex.getLockedUntil() != null ? ex.getLockedUntil().toString() : ""
             ));
+        } catch (BadCredentialsException ex) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(new ApiErrorResponse("INVALID_CREDENTIALS",
+                            ex.getMessage() != null ? ex.getMessage() : "Invalid credentials"));
+        } catch (AccessDeniedException ex) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(new ApiErrorResponse("ACCESS_DENIED",
+                            ex.getMessage() != null ? ex.getMessage() : "Access denied"));
         }
     }
 

@@ -27,8 +27,12 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                // Public: browse jobs
-                .requestMatchers(HttpMethod.GET, "/api/jobs/**").permitAll()
+                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                // Démo Feign sync (job → preevaluation) + doc
+                .requestMatchers(HttpMethod.GET, "/api/jobs/public/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+                // Public: browse jobs (incl. /api/jobs sans segment — Ant /** ne couvre pas toujours la racine)
+                .requestMatchers(HttpMethod.GET, "/api/jobs", "/api/jobs/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/job-notifications/**").authenticated()
                 // Saved jobs — any authenticated user
                 .requestMatchers("/api/saved-jobs/**").authenticated()
@@ -36,10 +40,18 @@ public class SecurityConfig {
                 .requestMatchers("/api/cv-profiles/**").hasAnyRole("TUTOR", "CANDIDATE", "ADMIN")
                 // Applications — TUTOR or CANDIDATE applies, ADMIN manages
                 .requestMatchers(HttpMethod.POST, "/api/applications/**").hasAnyRole("TUTOR", "CANDIDATE")
-                .requestMatchers(HttpMethod.PUT, "/api/applications/**").hasAnyRole("ADMIN", "TUTOR", "CANDIDATE")
+                // PUT/PATCH : seuls statut + futurs endpoints ; contrôle ADMIN.
+                .requestMatchers(HttpMethod.PUT, "/api/applications/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.PATCH, "/api/applications/**").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.GET, "/api/applications/**").authenticated()
-                // Meetings — ADMIN schedules/manages
-                .requestMatchers("/api/meetings/**").hasAnyRole("ADMIN", "TUTOR")
+                // Meetings — lecture « perso » / par application : tout utilisateur connecté ; liste admin : ADMIN uniquement
+                .requestMatchers(HttpMethod.GET, "/api/meetings/room/**").authenticated()
+                .requestMatchers(HttpMethod.GET, "/api/meetings/application/**").authenticated()
+                .requestMatchers(HttpMethod.GET, "/api/meetings/my", "/api/meetings/next").authenticated()
+                .requestMatchers(HttpMethod.GET, "/api/meetings").authenticated()
+                .requestMatchers(HttpMethod.POST, "/api/meetings/**").authenticated()
+                .requestMatchers(HttpMethod.PUT, "/api/meetings/**").authenticated()
+                .requestMatchers(HttpMethod.DELETE, "/api/meetings/**").authenticated()
                 // Ratings — STUDENT rates; admins/tutors read
                 .requestMatchers(HttpMethod.POST, "/api/ratings/**").hasRole("STUDENT")
                 .requestMatchers(HttpMethod.GET, "/api/ratings/**").authenticated()

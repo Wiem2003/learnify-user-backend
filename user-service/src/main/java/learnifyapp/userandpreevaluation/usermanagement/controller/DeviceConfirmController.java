@@ -66,7 +66,7 @@ public class DeviceConfirmController {
 
         var attempt = deviceLoginAttemptRepository.findByToken(t).orElseThrow();
         var user = attempt.getUser();
-        String jwt = jwtUtil.generateToken(user.getEmail(), user.getRole().name());
+        String jwt = jwtUtil.generateToken(user.getEmail(), user.getRole().name(), user.getId());
 
         userService.createSessionFor(user.getEmail(), attempt.getUserAgent(), attempt.getIp());
 
@@ -96,7 +96,7 @@ public class DeviceConfirmController {
             return ResponseEntity.status(409).body(Map.of("status", attempt.getStatus().name()));
         }
         var user = attempt.getUser();
-        String jwt = jwtUtil.generateToken(user.getEmail(), user.getRole().name());
+        String jwt = jwtUtil.generateToken(user.getEmail(), user.getRole().name(), user.getId());
         userService.createSessionFor(user.getEmail(), attempt.getUserAgent(), attempt.getIp());
 
         return ResponseEntity.ok(Map.of(

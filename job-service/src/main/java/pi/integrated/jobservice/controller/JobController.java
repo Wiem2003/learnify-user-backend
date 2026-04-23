@@ -27,17 +27,12 @@ public class JobController {
         return ResponseEntity.ok(jobService.getAllJobs());
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<Job> getJob(@PathVariable Long id) {
-        return ResponseEntity.ok(jobService.getJobOrThrow(id));
-    }
-
     @GetMapping("/search")
     public ResponseEntity<List<Job>> searchJobs(
-            @RequestParam(required = false) String title,
+            @RequestParam(required = false) String titre,
             @RequestParam(required = false) String location,
             @RequestParam(required = false) String subject) {
-        return ResponseEntity.ok(jobService.searchJobs(title, location, subject));
+        return ResponseEntity.ok(jobService.searchJobs(titre, location, subject));
     }
 
     // ── Authenticated: ranked list with match score ───────────────────────────
@@ -87,4 +82,17 @@ public class JobController {
         Long userId = (Long) request.getAttribute("userId");
         return ResponseEntity.ok(savedJobService.getSavedJobs(userId));
     }
+
+    @GetMapping("/saved/ids")
+    public ResponseEntity<List<Long>> getSavedJobIds(HttpServletRequest request) {
+        Long userId = (Long) request.getAttribute("userId");
+        return ResponseEntity.ok(savedJobService.getSavedJobIds(userId));
+    }
+
+    /** Après les chemins littéraux (/search, /saved, …) pour ne pas intercepter « statistics »-style segments. */
+    @GetMapping("/{id}")
+    public ResponseEntity<Job> getJob(@PathVariable Long id) {
+        return ResponseEntity.ok(jobService.getJobOrThrow(id));
+    }
 }
+
