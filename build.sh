@@ -34,8 +34,8 @@ done
 
 echo ""
 echo "Starting services..."
-docker compose build
-docker compose up -d
+docker-compose build
+docker-compose up -d
 
 echo ""
 echo "Done! Services are starting."
