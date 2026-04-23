@@ -15,6 +15,14 @@ if ! command -v mvn &>/dev/null; then
   apt-get install -y maven
 fi
 
+# ── Ensure Java 17 is active ─────────────────────────────────────────────────
+JAVA17=$(update-alternatives --list java 2>/dev/null | grep "java-17" | head -1)
+if [ -n "$JAVA17" ]; then
+  export JAVA_HOME=$(dirname $(dirname $JAVA17))
+  export PATH=$JAVA_HOME/bin:$PATH
+  echo "Using Java: $(java -version 2>&1 | head -1)"
+fi
+
 if ! command -v docker-compose &>/dev/null; then
   echo "Installing docker-compose..."
   curl -fsSL "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" \
