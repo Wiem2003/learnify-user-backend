@@ -1,13 +1,10 @@
 #!/bin/bash
-# ─────────────────────────────────────────────────────────────────────────────
-# build.sh — Build all Spring Boot jars then Docker images
-# Run from: merge_integ/integrated/
-# Usage:  chmod +x build.sh && ./build.sh
-# ─────────────────────────────────────────────────────────────────────────────
+# build.sh - Build all Spring Boot jars then start with docker-compose
+# Usage: chmod +x build.sh && ./build.sh
 
-set -e  # stop on first error
+set -e
 
-SERVICES_JAVA=(
+SERVICES=(
   "eureka-server"
   "config-server"
   "event-service"
@@ -23,29 +20,24 @@ SERVICES_JAVA=(
   "api-gateway"
 )
 
-echo "======================================================"
-echo "  STEP 1 — Building Spring Boot JARs (Maven)"
-echo "======================================================"
+echo "Building Spring Boot JARs..."
 
-for svc in "${SERVICES_JAVA[@]}"; do
+for svc in "${SERVICES[@]}"; do
   if [ -d "$svc" ] && [ -f "$svc/pom.xml" ]; then
-    echo ""
-    echo "▶ Building $svc ..."
+    echo "  Building $svc ..."
     (cd "$svc" && mvn clean package -DskipTests -q)
-    echo "✓ $svc — done"
+    echo "  Done: $svc"
   else
-    echo "⚠ Skipping $svc (folder or pom.xml not found)"
+    echo "  Skipping $svc (not found)"
   fi
 done
 
 echo ""
-echo "======================================================"
-echo "  STEP 2 — Building Docker images"
-echo "======================================================"
-
-docker-compose build
+echo "Starting services..."
+docker compose up --build -d
 
 echo ""
-echo "======================================================"
-echo "  ALL DONE — Run with: docker-compose up -d"
-echo "======================================================"
+echo "Done! Services are starting."
+echo "  Check status : docker compose ps"
+echo "  Eureka       : http://localhost:8761"
+echo "  API Gateway  : http://localhost:8080"
