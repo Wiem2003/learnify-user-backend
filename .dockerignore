@@ -1,0 +1,4 @@
+.git
+target/*.original
+.idea
+node_modules
