@@ -6,9 +6,13 @@ pipeline {
         jdk 'Java17'
     }
 
+    environment {
+        IMAGE_NAME = 'wiem2003/user-service:latest'
+    }
+
     stages {
 
-        stage('Clone') {
+        stage('Checkout') {
             steps {
                 git branch: 'user_final_user',
                 url: 'https://github.com/Wiem2003/learnify-user-backend.git'
@@ -17,32 +21,34 @@ pipeline {
 
         stage('Build') {
             steps {
-                sh 'mvn clean package -DskipTests'
+                sh 'mvn clean compile'
             }
         }
 
-        stage('SonarQube Analysis') {
+        stage('Test') {
             steps {
-                withSonarQubeEnv('SonarQube') {
-                    sh '''
-                    mvn sonar:sonar \
-                    -Dsonar.projectKey=user-service \
-                    -Dsonar.projectName=user-service
-                    '''
-                }
+                sh 'mvn test'
             }
         }
 
         stage('Docker Build') {
             steps {
-                sh 'docker build -t user-service .'
+                sh 'docker build -t $IMAGE_NAME .'
             }
         }
 
-        stage('Run Container') {
+        stage('Docker Push') {
             steps {
-                sh 'docker rm -f user-service-container || true'
-                sh 'docker run -d -p 8087:8087 --name user-service-container user-service'
+                withCredentials([usernamePassword(
+                    credentialsId: 'dockerhub',
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_PASS'
+                )]) {
+                    sh '''
+                    echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
+                    docker push $IMAGE_NAME
+                    '''
+                }
             }
         }
     }
