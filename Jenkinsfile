@@ -14,10 +14,21 @@ pipeline {
 
         stage('Build') {
             steps {
-                sh 'mvn clean package -DskipTests'
+                sh 'mvn clean compile'
             }
         }
 
+        stage('Test + JaCoCo') {
+            steps {
+                sh 'mvn test'
+            }
+        }
+
+        stage('Package') {
+            steps {
+                sh 'mvn package -DskipTests'
+            }
+        }
 
         stage('SonarQube Analysis') {
             steps {
@@ -25,7 +36,8 @@ pipeline {
                     sh '''
                     mvn sonar:sonar \
                     -Dsonar.projectKey=user-service \
-                    -Dsonar.projectName=user-service
+                    -Dsonar.projectName=user-service \
+                    -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
                     '''
                 }
             }
