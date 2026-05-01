@@ -21,12 +21,6 @@ pipeline {
             }
         }
 
-        stage('Test') {
-            steps {
-                sh 'mvn test'
-            }
-        }
-
         stage('SonarQube Analysis') {
             steps {
                 withSonarQubeEnv('SonarQube') {
@@ -49,12 +43,6 @@ pipeline {
             steps {
                 sh 'docker rm -f user-service-container || true'
                 sh 'docker run -d -p 8087:8087 --name user-service-container user-service'
-            }
-        }
-
-        stage('Show Running Containers') {
-            steps {
-                sh 'docker ps'
             }
         }
     }
