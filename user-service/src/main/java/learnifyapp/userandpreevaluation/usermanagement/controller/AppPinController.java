@@ -10,7 +10,6 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/app-pin")
-@CrossOrigin(origins = "http://localhost:4200")
 public class AppPinController {
 
     private final AppPinService pinService;
