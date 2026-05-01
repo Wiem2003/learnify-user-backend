@@ -10,7 +10,7 @@ pipeline {
 
         stage('Clone') {
             steps {
-                git branch: 'user_wiem',
+                git branch: 'user_final_user',
                 url: 'https://github.com/Wiem2003/learnify-user-backend.git'
             }
         }
@@ -58,4 +58,4 @@ pipeline {
             }
         }
     }
-}git checkout user_final_user
+}
