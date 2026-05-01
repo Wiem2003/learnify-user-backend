@@ -25,11 +25,17 @@ pipeline {
             }
         }
 
-       stage('Test') {
-           steps {
-               sh 'mvn test || true'
-           }
-       }
+        stage('Test') {
+            steps {
+                sh 'mvn test || true'
+            }
+        }
+
+        stage('Package') {
+            steps {
+                sh 'mvn package -DskipTests'
+            }
+        }
 
         stage('Docker Build') {
             steps {
