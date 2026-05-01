@@ -7,7 +7,7 @@ pipeline {
     }
 
     environment {
-        IMAGE_NAME = 'wiem2003/user-service:latest'
+        IMAGE_NAME = 'wiwi2003/user-service:latest'
     }
 
     stages {
@@ -15,7 +15,7 @@ pipeline {
         stage('Checkout') {
             steps {
                 git branch: 'user_final_user',
-                url: 'https://github.com/Wiem2003/learnify-user-backend.git'
+                url: 'https://github.com/wiwi2003/learnify-user-backend.git'
             }
         }
 
