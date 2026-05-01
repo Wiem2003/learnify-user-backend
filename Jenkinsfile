@@ -12,6 +12,13 @@ pipeline {
 
     stages {
 
+        stage('Checkout') {
+            steps {
+                git branch: 'user_final_user',
+                url: 'https://github.com/Wiem2003/learnify-user-backend.git'
+            }
+        }
+
         stage('Build') {
             steps {
                 sh 'mvn clean compile'
