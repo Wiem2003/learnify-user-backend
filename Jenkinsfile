@@ -30,20 +30,20 @@ pipeline {
             }
         }
 
-        stage('SonarQube Analysis') {
-            steps {
-                withSonarQubeEnv('SonarQube') {
-                    sh '''
-                    ls -la target/site/jacoco/ || true
+       stage('SonarQube Analysis') {
+           steps {
+               withSonarQubeEnv('SonarQube') {
+                   sh '''
+                   ls -la target/site/jacoco/
 
-                    mvn sonar:sonar \
-                    -Dsonar.projectKey=user-service \
-                    -Dsonar.projectName=user-service \
-                    -Dsonar.coverage.jacoco.xmlReportPaths=**/target/site/jacoco/jacoco.xml
-                    '''
-                }
-            }
-        }
+                   mvn sonar:sonar \
+                   -Dsonar.projectKey=user-service \
+                   -Dsonar.projectName=user-service \
+                   -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
+                   '''
+               }
+           }
+       }
 
         stage('Docker Build') {
             steps {
