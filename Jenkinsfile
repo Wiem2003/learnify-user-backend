@@ -20,7 +20,7 @@ pipeline {
 
         stage('Test + JaCoCo') {
             steps {
-                sh 'mvn test'
+                sh 'mvn verify'
             }
         }
 
