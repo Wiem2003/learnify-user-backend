@@ -34,10 +34,12 @@ pipeline {
             steps {
                 withSonarQubeEnv('SonarQube') {
                     sh '''
+                    ls -la target/site/jacoco/ || true
+
                     mvn sonar:sonar \
                     -Dsonar.projectKey=user-service \
                     -Dsonar.projectName=user-service \
-                    -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
+                    -Dsonar.coverage.jacoco.xmlReportPaths=**/target/site/jacoco/jacoco.xml
                     '''
                 }
             }
