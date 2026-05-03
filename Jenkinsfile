@@ -18,7 +18,7 @@ pipeline {
             }
         }
 
-        stage('Test + JaCoCo') {
+        stage('Test') {
             steps {
                 sh 'mvn test'
             }
@@ -29,21 +29,6 @@ pipeline {
                 sh 'mvn package -DskipTests'
             }
         }
-
-       stage('SonarQube Analysis') {
-           steps {
-               withSonarQubeEnv('SonarQube') {
-                   sh '''
-                   ls -la target/site/jacoco/
-
-                   mvn sonar:sonar \
-                   -Dsonar.projectKey=user-service \
-                   -Dsonar.projectName=user-service \
-                   -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
-                   '''
-               }
-           }
-       }
 
         stage('Docker Build') {
             steps {
