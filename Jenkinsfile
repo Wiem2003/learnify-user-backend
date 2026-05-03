@@ -51,5 +51,14 @@ pipeline {
                 }
             }
         }
+
+        stage('Deploy Kubernetes') {
+            steps {
+                sh '''
+                kubectl rollout restart deployment user-service -n learnify
+                kubectl rollout status deployment user-service -n learnify
+                '''
+            }
+        }
     }
 }
