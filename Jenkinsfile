@@ -39,7 +39,7 @@ pipeline {
 
         stage('Docker Build') {
             steps {
-                sh 'docker build -t $IMAGE_NAME .'
+                sh 'docker build --no-cache -t $IMAGE_NAME .'
             }
         }
 
@@ -51,10 +51,20 @@ pipeline {
                     passwordVariable: 'DOCKER_PASS'
                 )]) {
                     sh '''
+                    docker logout || true
                     echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
                     docker push $IMAGE_NAME
                     '''
                 }
+            }
+        }
+
+        stage('Deploy Kubernetes') {
+            steps {
+                sh '''
+                kubectl rollout restart deployment eureka-server -n learnify
+                kubectl rollout status deployment eureka-server -n learnify
+                '''
             }
         }
     }
