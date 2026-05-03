@@ -2,8 +2,7 @@ pipeline {
     agent any
 
     tools {
-        jdk 'jdk17'
-        nodejs 'node18'
+        jdk 'Java17'
     }
 
     environment {
@@ -20,13 +19,13 @@ pipeline {
             }
         }
 
-        stage('Install Dependencies') {
+        stage('Install') {
             steps {
                 sh 'npm install'
             }
         }
 
-        stage('Build Angular') {
+        stage('Build') {
             steps {
                 sh 'npm run build'
             }
@@ -38,7 +37,7 @@ pipeline {
             }
         }
 
-        stage('Docker Push') {
+        stage('Push') {
             steps {
                 withCredentials([usernamePassword(
                     credentialsId: 'dockerhub',
@@ -53,7 +52,7 @@ pipeline {
             }
         }
 
-        stage('Deploy Kubernetes') {
+        stage('Deploy') {
             steps {
                 sh '''
                 kubectl rollout restart deployment frontend -n learnify
