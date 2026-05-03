@@ -1,0 +1,153 @@
+<div class="ai-advice-page">
+  
+  <!-- Loading -->
+  <div *ngIf="loading" class="loading-state">
+    <div class="spinner"></div>
+    <p>Génération de vos conseils personnalisés...</p>
+  </div>
+
+  <!-- Error -->
+  <div *ngIf="error && !loading" class="error-state">
+    <div class="error-icon">
+      <i class="bi bi-exclamation-triangle"></i>
+    </div>
+    <h3>Erreur</h3>
+    <p>{{ error }}</p>
+    <button class="btn-primary" (click)="goBack()">
+      <i class="bi bi-arrow-left"></i>
+      Retour
+    </button>
+  </div>
+
+  <!-- Advice Content -->
+  <div *ngIf="!loading && !error && advice && attempt && quiz" class="advice-content">
+    
+    <!-- Header -->
+    <header class="advice-header">
+      <button class="btn-back" (click)="goBack()">
+        <i class="bi bi-arrow-left"></i>
+        Retour aux résultats
+      </button>
+      
+      <div class="header-info">
+        <div class="ai-badge">
+          <i class="bi bi-stars"></i>
+          Conseils IA Personnalisés
+        </div>
+        <h1 class="quiz-title">{{ quiz.title }}</h1>
+      </div>
+    </header>
+
+    <!-- Score Summary -->
+    <section class="score-summary" [ngClass]="getScoreClass()">
+      <div class="score-circle">
+        <svg viewBox="0 0 120 120">
+          <circle class="score-bg" cx="60" cy="60" r="54" />
+          <circle 
+            class="score-fill" 
+            cx="60" cy="60" r="54"
+            [style.strokeDasharray]="(getPercentage() / 100 * 339.29) + ' 339.29'"
+          />
+        </svg>
+        <div class="score-text">
+          <span class="score-value">{{ getPercentage() | number:'1.0-0' }}%</span>
+          <span class="score-label">Score</span>
+        </div>
+      </div>
+      
+      <div class="score-details">
+        <h2>{{ attempt.passed ? 'Félicitations!' : 'Continuez vos efforts!' }}</h2>
+        <p class="score-info">
+          Vous avez obtenu <strong>{{ attempt.score }}</strong> points sur <strong>{{ attempt.totalPoints }}</strong>
+        </p>
+        <div class="status-badge" [class.passed]="attempt.passed" [class.failed]="!attempt.passed">
+          <i [class]="attempt.passed ? 'bi bi-check-circle-fill' : 'bi bi-x-circle-fill'"></i>
+          {{ attempt.passed ? 'Réussi' : 'Non réussi' }}
+        </div>
+      </div>
+    </section>
+
+    <!-- Overall Feedback -->
+    <section class="feedback-section">
+      <div class="section-header">
+        <i class="bi bi-chat-heart-fill"></i>
+        <h3>Analyse Globale</h3>
+      </div>
+      <div class="feedback-card overall-feedback">
+        <p>{{ advice.overallFeedback }}</p>
+      </div>
+    </section>
+
+    <!-- Strengths -->
+    <section class="feedback-section" *ngIf="advice.strengths && advice.strengths.length > 0">
+      <div class="section-header">
+        <i class="bi bi-trophy-fill"></i>
+        <h3>Vos Points Forts</h3>
+      </div>
+      <div class="feedback-card strengths-card">
+        <ul class="feedback-list">
+          <li *ngFor="let strength of advice.strengths">
+            <i class="bi bi-check-circle-fill"></i>
+            <span>{{ strength }}</span>
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- Weaknesses -->
+    <section class="feedback-section" *ngIf="advice.weaknesses && advice.weaknesses.length > 0">
+      <div class="section-header">
+        <i class="bi bi-exclamation-circle-fill"></i>
+        <h3>Points à Améliorer</h3>
+      </div>
+      <div class="feedback-card weaknesses-card">
+        <ul class="feedback-list">
+          <li *ngFor="let weakness of advice.weaknesses">
+            <i class="bi bi-arrow-right-circle-fill"></i>
+            <span>{{ weakness }}</span>
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- Recommendations -->
+    <section class="feedback-section" *ngIf="advice.recommendations && advice.recommendations.length > 0">
+      <div class="section-header">
+        <i class="bi bi-lightbulb-fill"></i>
+        <h3>Recommandations</h3>
+      </div>
+      <div class="feedback-card recommendations-card">
+        <ul class="feedback-list numbered">
+          <li *ngFor="let recommendation of advice.recommendations; let i = index">
+            <span class="number">{{ i + 1 }}</span>
+            <span>{{ recommendation }}</span>
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- Encouragement -->
+    <section class="feedback-section" *ngIf="advice.motivationalMessage">
+      <div class="feedback-card encouragement-card">
+        <div class="encouragement-icon">
+          <i class="bi bi-emoji-smile-fill"></i>
+        </div>
+        <p>{{ advice.motivationalMessage }}</p>
+      </div>
+    </section>
+
+    <!-- Actions -->
+    <section class="actions-section">
+      <button class="btn-action btn-retake" (click)="retakeQuiz()">
+        <i class="bi bi-arrow-clockwise"></i>
+        Refaire le Quiz
+      </button>
+      <button class="btn-action btn-quizzes" (click)="viewQuizzes()">
+        <i class="bi bi-collection"></i>
+        Voir Tous les Quiz
+      </button>
+    </section>
+
+  </div>
+
+</div>

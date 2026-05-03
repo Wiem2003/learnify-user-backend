@@ -1,0 +1,264 @@
+<div class="admin-quiz-page">
+  
+  <!-- Header -->
+  <header class="page-header">
+    <div class="header-content">
+      <div class="header-left">
+        <h1 class="page-title">
+          <i class="bi bi-journal-text"></i>
+          Gestion des Quiz
+        </h1>
+        <p class="page-subtitle">Créez, modifiez et gérez vos quiz</p>
+      </div>
+      <div class="header-right">
+        <button class="btn-create" (click)="createQuiz()">
+          <i class="bi bi-plus-lg"></i>
+          <span>Nouveau Quiz</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Stats Cards -->
+  <section class="stats-section">
+    <div class="stat-card" [class.active]="selectedStatus === 'ALL'" (click)="setStatusFilter('ALL')">
+      <div class="stat-icon stat-icon-total">
+        <i class="bi bi-collection"></i>
+      </div>
+      <div class="stat-content">
+        <div class="stat-value">{{ stats.total }}</div>
+        <div class="stat-label">Total Quiz</div>
+      </div>
+    </div>
+
+    <div class="stat-card" [class.active]="selectedStatus === 'PUBLISHED'" (click)="setStatusFilter('PUBLISHED')">
+      <div class="stat-icon stat-icon-published">
+        <i class="bi bi-check-circle-fill"></i>
+      </div>
+      <div class="stat-content">
+        <div class="stat-value">{{ stats.published }}</div>
+        <div class="stat-label">Publiés</div>
+      </div>
+    </div>
+
+    <div class="stat-card" [class.active]="selectedStatus === 'DRAFT'" (click)="setStatusFilter('DRAFT')">
+      <div class="stat-icon stat-icon-draft">
+        <i class="bi bi-pencil-square"></i>
+      </div>
+      <div class="stat-content">
+        <div class="stat-value">{{ stats.draft }}</div>
+        <div class="stat-label">Brouillons</div>
+      </div>
+    </div>
+
+    <div class="stat-card" [class.active]="selectedStatus === 'ARCHIVED'" (click)="setStatusFilter('ARCHIVED')">
+      <div class="stat-icon stat-icon-archived">
+        <i class="bi bi-archive-fill"></i>
+      </div>
+      <div class="stat-content">
+        <div class="stat-value">{{ stats.archived }}</div>
+        <div class="stat-label">Archivés</div>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-icon stat-icon-questions">
+        <i class="bi bi-list-check"></i>
+      </div>
+      <div class="stat-content">
+        <div class="stat-value">{{ stats.totalQuestions }}</div>
+        <div class="stat-label">Questions</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Toolbar -->
+  <section class="toolbar">
+    <div class="toolbar-left">
+      <div class="search-box">
+        <i class="bi bi-search"></i>
+        <input
+          type="text"
+          placeholder="Rechercher un quiz..."
+          [(ngModel)]="searchTerm"
+          (input)="applyFilters()"
+        />
+        <span class="search-count" *ngIf="!loading">{{ filteredQuizzes.length }}</span>
+      </div>
+    </div>
+
+    <div class="toolbar-right">
+      <div class="sort-dropdown">
+        <button class="btn-sort" [class.active]="sortBy === 'createdAt'" (click)="setSortBy('createdAt')">
+          <i class="bi bi-calendar"></i>
+          Date
+          <i class="bi" [class.bi-arrow-up]="sortOrder === 'asc'" [class.bi-arrow-down]="sortOrder === 'desc'"></i>
+        </button>
+        <button class="btn-sort" [class.active]="sortBy === 'title'" (click)="setSortBy('title')">
+          <i class="bi bi-sort-alpha-down"></i>
+          Titre
+        </button>
+        <button class="btn-sort" [class.active]="sortBy === 'questionCount'" (click)="setSortBy('questionCount')">
+          <i class="bi bi-list-ol"></i>
+          Questions
+        </button>
+      </div>
+
+      <div class="view-toggle">
+        <button 
+          class="btn-view" 
+          [class.active]="selectedView === 'grid'" 
+          (click)="toggleView('grid')"
+          title="Vue grille">
+          <i class="bi bi-grid-3x3-gap-fill"></i>
+        </button>
+        <button 
+          class="btn-view" 
+          [class.active]="selectedView === 'list'" 
+          (click)="toggleView('list')"
+          title="Vue liste">
+          <i class="bi bi-list-ul"></i>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Loading -->
+  <div *ngIf="loading" class="loading-state">
+    <div class="spinner"></div>
+    <p>Chargement des quiz...</p>
+  </div>
+
+  <!-- Empty State -->
+  <div *ngIf="!loading && filteredQuizzes.length === 0" class="empty-state">
+    <div class="empty-icon">
+      <i class="bi bi-inbox"></i>
+    </div>
+    <h3>Aucun quiz trouvé</h3>
+    <p *ngIf="searchTerm || selectedStatus !== 'ALL'">
+      Essayez de modifier vos filtres de recherche
+    </p>
+    <p *ngIf="!searchTerm && selectedStatus === 'ALL'">
+      Commencez par créer votre premier quiz
+    </p>
+    <button class="btn-create" (click)="createQuiz()" *ngIf="!searchTerm && selectedStatus === 'ALL'">
+      <i class="bi bi-plus-lg"></i>
+      Créer un Quiz
+    </button>
+  </div>
+
+  <!-- Quiz Grid -->
+  <div *ngIf="!loading && filteredQuizzes.length > 0" 
+       class="quiz-container"
+       [class.view-grid]="selectedView === 'grid'"
+       [class.view-list]="selectedView === 'list'">
+    
+    <article 
+      *ngFor="let quiz of filteredQuizzes" 
+      class="quiz-card"
+      (click)="viewQuiz(quiz.id!)">
+      
+      <!-- Status Badge -->
+      <div class="quiz-status">
+        <span [ngClass]="getStatusBadgeClass(quiz.status)">
+          <i [class]="getStatusIcon(quiz.status)"></i>
+          {{ quiz.status }}
+        </span>
+      </div>
+
+      <!-- Card Header -->
+      <div class="quiz-header">
+        <h3 class="quiz-title">{{ quiz.title }}</h3>
+        <p class="quiz-description">{{ quiz.description || 'Aucune description' }}</p>
+      </div>
+
+      <!-- Card Meta -->
+      <div class="quiz-meta">
+        <div class="meta-item">
+          <i class="bi bi-list-check"></i>
+          <span>{{ quiz.questionCount || 0 }} questions</span>
+        </div>
+        <div class="meta-item" *ngIf="quiz.averageScore">
+          <i class="bi bi-bar-chart-line"></i>
+          <span>{{ quiz.averageScore | number:'1.0-0' }}% moy.</span>
+        </div>
+        <div class="meta-item">
+          <i class="bi bi-clock"></i>
+          <span>{{ quiz.timeLimitMinutes || 30 }} min</span>
+        </div>
+      </div>
+
+      <!-- Card Footer -->
+      <div class="quiz-footer">
+        <div class="quiz-date">
+          <i class="bi bi-calendar3"></i>
+          {{ quiz.createdAt | date:'dd/MM/yyyy' }}
+        </div>
+        
+        <div class="quiz-actions">
+          <button 
+            class="btn-action btn-questions" 
+            (click)="manageQuestions(quiz.id!, $event)"
+            title="Gérer les questions">
+            <i class="bi bi-list-check"></i>
+          </button>
+          
+          <button 
+            class="btn-action btn-edit" 
+            (click)="editQuiz(quiz.id!, $event)"
+            title="Modifier">
+            <i class="bi bi-pencil"></i>
+          </button>
+          
+          <button 
+            class="btn-action btn-toggle" 
+            (click)="toggleStatus(quiz, $event)"
+            [title]="quiz.status === 'PUBLISHED' ? 'Archiver' : 'Publier'">
+            <i [class]="quiz.status === 'PUBLISHED' ? 'bi bi-archive' : 'bi bi-check-circle'"></i>
+          </button>
+          
+          <button 
+            class="btn-action btn-delete" 
+            (click)="confirmDelete(quiz, $event)"
+            title="Supprimer">
+            <i class="bi bi-trash"></i>
+          </button>
+        </div>
+      </div>
+    </article>
+  </div>
+
+</div>
+
+<!-- Delete Modal -->
+<div class="modal-overlay" *ngIf="showDeleteModal" (click)="cancelDelete()">
+  <div class="modal-content" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <div class="modal-icon modal-icon-danger">
+        <i class="bi bi-exclamation-triangle"></i>
+      </div>
+      <h3>Supprimer le quiz ?</h3>
+    </div>
+    
+    <div class="modal-body">
+      <p>Êtes-vous sûr de vouloir supprimer <strong>{{ quizToDelete?.title }}</strong> ?</p>
+      <p class="text-warning">
+        <i class="bi bi-info-circle"></i>
+        Cette action supprimera également toutes les questions, tentatives et feedbacks associés.
+      </p>
+    </div>
+    
+    <div class="modal-footer">
+      <button class="btn-cancel" (click)="cancelDelete()" [disabled]="deleting">
+        Annuler
+      </button>
+      <button class="btn-confirm" (click)="deleteQuiz()" [disabled]="deleting">
+        <span *ngIf="!deleting">Supprimer</span>
+        <span *ngIf="deleting">
+          <i class="bi bi-hourglass-split"></i>
+          Suppression...
+        </span>
+      </button>
+    </div>
+  </div>
+</div>

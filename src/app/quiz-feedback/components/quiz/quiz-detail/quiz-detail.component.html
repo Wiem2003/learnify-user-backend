@@ -1,0 +1,234 @@
+<div class="container-fluid py-4" *ngIf="quiz">
+  <!-- Back Button -->
+  <div class="mb-3">
+    <button class="btn btn-outline-secondary" (click)="goBack()">
+      <i class="bi bi-arrow-left"></i> Back to Quizzes
+    </button>
+  </div>
+
+  <div class="card mb-4">
+    <div class="card-body">
+      <div class="d-flex justify-content-between align-items-start">
+        <div>
+          <h2>{{ quiz.title }}</h2>
+          <p class="text-muted">{{ quiz.description }}</p>
+          <span [class]="'badge ' + (quiz.status === 'PUBLISHED' ? 'bg-success' : quiz.status === 'ARCHIVED' ? 'bg-warning' : 'bg-secondary')">
+            {{ quiz.status }}
+          </span>
+        </div>
+        <div>
+          <button class="btn btn-primary me-2" (click)="takeQuiz()" *ngIf="quiz.status === 'PUBLISHED'">
+            <i class="bi bi-play-circle"></i> Take Quiz
+          </button>
+          <button class="btn btn-secondary" (click)="editQuiz()">
+            <i class="bi bi-pencil"></i> Edit
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row mb-4" *ngIf="stats">
+    <div class="col-md-3">
+      <div class="card text-center">
+        <div class="card-body">
+          <h5>{{ questions.length }}</h5>
+          <p class="text-muted mb-0">Total Questions</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card text-center">
+        <div class="card-body">
+          <h5>{{ stats.averageScore | number:'1.1-1' }}</h5>
+          <p class="text-muted mb-0">Avg Score</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card text-center">
+        <div class="card-body">
+          <h5>{{ stats.totalAttempts }}</h5>
+          <p class="text-muted mb-0">Total Attempts</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card text-center">
+        <div class="card-body">
+          <h5>{{ stats.passRate | number:'1.1-1' }}%</h5>
+          <p class="text-muted mb-0">Pass Rate</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <ul class="nav nav-tabs card-header-tabs">
+        <li class="nav-item">
+          <a class="nav-link" [class.active]="activeTab === 'questions'" (click)="activeTab = 'questions'" style="cursor: pointer;">
+            Questions
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" [class.active]="activeTab === 'attempts'" (click)="activeTab = 'attempts'" style="cursor: pointer;">
+            Attempts
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" [class.active]="activeTab === 'feedbacks'" (click)="activeTab = 'feedbacks'" style="cursor: pointer;">
+            Feedbacks
+          </a>
+        </li>
+      </ul>
+    </div>
+    <div class="card-body">
+      <div *ngIf="activeTab === 'questions'">
+        <div class="mb-3 d-flex justify-content-between align-items-center">
+          <button class="btn btn-sm btn-primary" (click)="openQuestionForm()">
+            <i class="bi bi-plus"></i> Add Question
+          </button>
+        </div>
+
+        <!-- Question Form Modal -->
+        <div *ngIf="showQuestionForm" class="card mb-3 border-primary">
+          <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">{{ editingQuestion ? 'Edit' : 'Add' }} Question</h5>
+          </div>
+          <div class="card-body">
+            <form>
+              <div class="mb-3">
+                <label class="form-label">Question Type *</label>
+                <select class="form-select" [(ngModel)]="newQuestion.type" name="type">
+                  <option value="MULTIPLE_CHOICE">Multiple Choice</option>
+                  <option value="TRUE_FALSE">True/False</option>
+                  <option value="SHORT_ANSWER">Short Answer</option>
+                </select>
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label">Question Text *</label>
+                <textarea class="form-control" [(ngModel)]="newQuestion.questionText" name="questionText" rows="3"></textarea>
+              </div>
+
+              <div class="mb-3" *ngIf="newQuestion.type === 'MULTIPLE_CHOICE'">
+                <label class="form-label">Options *</label>
+                <div *ngFor="let option of newQuestion.options; let i = index" class="input-group mb-2">
+                  <input type="text" class="form-control" [(ngModel)]="newQuestion.options![i]" [name]="'option' + i" placeholder="Option {{i + 1}}">
+                  <button class="btn btn-outline-danger" type="button" (click)="removeOption(i)" *ngIf="newQuestion.options!.length > 2">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </div>
+                <button class="btn btn-sm btn-outline-primary" type="button" (click)="addOption()">
+                  <i class="bi bi-plus"></i> Add Option
+                </button>
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label">Correct Answer *</label>
+                <input type="text" class="form-control" [(ngModel)]="newQuestion.correctAnswer" name="correctAnswer" 
+                       [placeholder]="newQuestion.type === 'TRUE_FALSE' ? 'true or false' : 'Enter correct answer'">
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label">Points *</label>
+                <input type="number" class="form-control" [(ngModel)]="newQuestion.points" name="points" min="1">
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label">Explanation (Optional)</label>
+                <textarea class="form-control" [(ngModel)]="newQuestion.explanation" name="explanation" rows="2"></textarea>
+              </div>
+
+              <div class="d-flex justify-content-end gap-2">
+                <button type="button" class="btn btn-secondary" (click)="closeQuestionForm()">Cancel</button>
+                <button type="button" class="btn btn-primary" (click)="saveQuestion()">Save Question</button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <!-- Questions List -->
+        <div *ngFor="let question of questions; let i = index" class="card mb-2">
+          <div class="card-body">
+            <div class="d-flex justify-content-between">
+              <div class="flex-grow-1">
+                <strong>Q{{ i + 1 }}:</strong> {{ question.questionText }}
+                <span class="badge bg-info ms-2">{{ question.type }}</span>
+                <span class="badge bg-secondary ms-1">{{ question.points }} pts</span>
+                <div class="mt-2 text-muted small" *ngIf="question.type === 'MULTIPLE_CHOICE' && question.options">
+                  Options: {{ question.options.join(', ') }}
+                </div>
+                <div class="mt-1 text-success small">
+                  <i class="bi bi-check-circle"></i> Correct: {{ question.correctAnswer }}
+                </div>
+              </div>
+              <div>
+                <button class="btn btn-sm btn-outline-primary me-1" (click)="openQuestionForm(question)">
+                  <i class="bi bi-pencil"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-danger" (click)="deleteQuestion(question.id!)">
+                  <i class="bi bi-trash"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div *ngIf="questions.length === 0" class="text-center text-muted py-4">
+          No questions added yet. Click "Add Question" to get started.
+        </div>
+      </div>
+
+      <div *ngIf="activeTab === 'attempts'">
+        <table class="table" *ngIf="attempts.length > 0">
+          <thead>
+            <tr>
+              <th>Student</th>
+              <th>Score</th>
+              <th>Status</th>
+              <th>Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let attempt of attempts">
+              <td>{{ attempt.studentName || 'Student #' + attempt.studentId }}</td>
+              <td>{{ attempt.score }} / {{ attempt.totalPoints }}</td>
+              <td>
+                <span [class]="'badge ' + (attempt.passed ? 'bg-success' : 'bg-danger')">
+                  {{ attempt.passed ? 'PASSED' : 'FAILED' }}
+                </span>
+              </td>
+              <td>{{ attempt.completedAt | date:'short' }}</td>
+            </tr>
+          </tbody>
+        </table>
+        <div *ngIf="attempts.length === 0" class="text-center text-muted py-4">
+          No attempts yet
+        </div>
+      </div>
+
+      <div *ngIf="activeTab === 'feedbacks'">
+        <div *ngFor="let feedback of feedbacks" class="card mb-2">
+          <div class="card-body">
+            <div class="d-flex justify-content-between">
+              <div>
+                <strong>{{ feedback.studentName || 'Student #' + feedback.studentId }}</strong>
+                <div class="text-warning">
+                  <span *ngFor="let star of getStarArray(feedback.rating)">
+                    <i [class]="star ? 'bi bi-star-fill' : 'bi bi-star'"></i>
+                  </span>
+                </div>
+                <p class="mb-0 mt-2">{{ feedback.comment }}</p>
+                <small class="text-muted">{{ feedback.createdAt | date:'short' }}</small>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div *ngIf="feedbacks.length === 0" class="text-center text-muted py-4">
+          No feedback yet
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

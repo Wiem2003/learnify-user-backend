@@ -1,0 +1,27 @@
+<div class="container py-5" style="max-width: 420px;">
+  <div class="card shadow-sm border-0">
+    <div class="card-body p-4">
+      <h4 class="mb-2">PIN Learnify</h4>
+      <p class="text-muted mb-3">Enter your PIN to continue.</p>
+
+      <div class="mb-3">
+        <label class="form-label">PIN</label>
+        <input
+          class="form-control"
+          type="password"
+          [(ngModel)]="pin"
+          name="pin"
+          placeholder="****"
+        />
+      </div>
+
+      <div *ngIf="error" class="alert alert-danger py-2">
+        {{ error }}
+      </div>
+
+      <button class="btn btn-primary w-100" (click)="onSubmit()">
+        Valider
+      </button>
+    </div>
+  </div>
+</div>
