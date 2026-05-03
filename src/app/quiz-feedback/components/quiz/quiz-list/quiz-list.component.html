@@ -1,0 +1,242 @@
+<!-- MODE ADMIN: Vue tableau avec gestion complète (INCHANGÉ) -->
+<div *ngIf="isAdminMode" class="container-fluid py-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Gestion des Quizzes</h2>
+    <button class="btn btn-primary" (click)="createQuiz()">
+      <i class="bi bi-plus-circle"></i> Créer un Quiz
+    </button>
+  </div>
+
+  <div class="card">
+    <div class="card-body">
+      <div class="mb-3">
+        <input
+          type="text"
+          class="form-control"
+          placeholder="Rechercher un quiz..."
+          [(ngModel)]="searchTerm"
+          (input)="applyFilters()"
+        />
+      </div>
+
+      <div class="row mb-3 g-2">
+        <div class="col-md-3">
+          <label class="form-label small">Statut</label>
+          <select class="form-select form-select-sm" [(ngModel)]="filterStatus" (change)="applyFilters()">
+            <option *ngFor="let status of statusOptions" [value]="status">{{ status }}</option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label small">Cours ID</label>
+          <input 
+            type="number" 
+            class="form-control form-control-sm" 
+            placeholder="Tous les cours"
+            [(ngModel)]="filterCourse" 
+            (input)="applyFilters()"
+          />
+        </div>
+        <div class="col-md-3">
+          <label class="form-label small">Trier par</label>
+          <select class="form-select form-select-sm" [(ngModel)]="sortBy" (change)="applyFilters()">
+            <option *ngFor="let opt of sortOptions" [value]="opt.value">{{ opt.label }}</option>
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small">Ordre</label>
+          <select class="form-select form-select-sm" [(ngModel)]="sortOrder" (change)="applyFilters()">
+            <option value="asc">Croissant</option>
+            <option value="desc">Décroissant</option>
+          </select>
+        </div>
+        <div class="col-md-1 d-flex align-items-end">
+          <button class="btn btn-sm btn-outline-secondary w-100" (click)="resetFilters()">
+            <i class="bi bi-arrow-clockwise"></i>
+          </button>
+        </div>
+      </div>
+
+      <div *ngIf="loading" class="text-center py-5">
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">Chargement...</span>
+        </div>
+      </div>
+
+      <div *ngIf="!loading && filteredQuizzes.length === 0" class="text-center py-5">
+        <i class="bi bi-inbox" style="font-size: 3rem; color: #ccc;"></i>
+        <p class="text-muted mt-3">Aucun quiz trouvé</p>
+      </div>
+
+      <div *ngIf="!loading && filteredQuizzes.length > 0" class="table-responsive">
+        <table class="table table-hover">
+          <thead>
+            <tr>
+              <th>Titre</th>
+              <th>Cours ID</th>
+              <th>Statut</th>
+              <th>Questions</th>
+              <th>Score Moyen</th>
+              <th>Créé le</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let quiz of filteredQuizzes">
+              <td>
+                <strong>{{ quiz.title }}</strong>
+                <br>
+                <small class="text-muted">{{ quiz.description }}</small>
+              </td>
+              <td>{{ quiz.courseId || 'N/A' }}</td>
+              <td>
+                <span [ngClass]="getStatusBadgeClass(quiz.status)">{{ quiz.status }}</span>
+              </td>
+              <td>{{ quiz.questionCount || 0 }}</td>
+              <td>{{ quiz.averageScore ? (quiz.averageScore | number:'1.0-0') + '%' : 'N/A' }}</td>
+              <td>{{ quiz.createdAt | date:'short' }}</td>
+              <td>
+                <div class="btn-group btn-group-sm">
+                  <button class="btn btn-outline-primary" (click)="viewQuiz(quiz.id!)" title="Voir">
+                    <i class="bi bi-eye-fill"></i>
+                  </button>
+                  <button class="btn btn-outline-secondary" (click)="editQuiz(quiz.id!)" title="Modifier">
+                    <i class="bi bi-pencil-square"></i>
+                  </button>
+                  <button 
+                    class="btn btn-outline-warning" 
+                    (click)="toggleStatus(quiz)" 
+                    [title]="quiz.status === 'PUBLISHED' ? 'Archiver' : 'Publier'">
+                    <i [class]="quiz.status === 'PUBLISHED' ? 'bi bi-archive' : 'bi bi-check-circle'"></i>
+                  </button>
+                  <button class="btn btn-outline-danger" (click)="confirmDelete(quiz)" title="Supprimer">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ============================================================ -->
+<!-- MODE ÉTUDIANT: Vue professionnelle redesignée                -->
+<!-- ============================================================ -->
+<div *ngIf="!isAdminMode" class="sq-page">
+  <app-navbar></app-navbar>
+
+  <!-- Hero header -->
+  <header class="sq-hero">
+    <div class="sq-hero__bg">
+      <div class="sq-hero__orb sq-hero__orb--1"></div>
+      <div class="sq-hero__orb sq-hero__orb--2"></div>
+      <div class="sq-hero__orb sq-hero__orb--3"></div>
+    </div>
+    <div class="sq-hero__content">
+      <div class="sq-hero__badge">
+        <i class="bi bi-mortarboard-fill"></i>
+        Espace Apprentissage
+      </div>
+      <h1 class="sq-hero__title">Vos Quiz</h1>
+      <p class="sq-hero__subtitle">Évaluez et renforcez vos connaissances à votre rythme</p>
+
+      <div class="sq-search">
+        <div class="sq-search__inner">
+          <i class="bi bi-search sq-search__icon"></i>
+          <input
+            type="text"
+            class="sq-search__input"
+            placeholder="Rechercher un quiz..."
+            [(ngModel)]="searchTerm"
+            (input)="applyFilters()"
+          />
+          <span class="sq-search__count" *ngIf="!loading">
+            {{ filteredQuizzes.length }} quiz{{ filteredQuizzes.length > 1 ? 'zes' : '' }}
+          </span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main content -->
+  <main class="sq-main">
+
+    <!-- Loading -->
+    <div *ngIf="loading" class="sq-loading">
+      <div class="sq-spinner">
+        <div class="sq-spinner__ring"></div>
+        <div class="sq-spinner__ring sq-spinner__ring--delay"></div>
+      </div>
+      <p class="sq-loading__text">Chargement des quiz...</p>
+    </div>
+
+    <!-- Empty state -->
+    <div *ngIf="!loading && filteredQuizzes.length === 0" class="sq-empty">
+      <div class="sq-empty__icon">
+        <i class="bi bi-journal-x"></i>
+      </div>
+      <h3 class="sq-empty__title">Aucun quiz trouvé</h3>
+      <p class="sq-empty__desc">Essayez un autre terme de recherche ou revenez plus tard</p>
+    </div>
+
+    <!-- Quiz list -->
+    <div *ngIf="!loading && filteredQuizzes.length > 0" class="sq-list">
+      <article class="sq-item" *ngFor="let quiz of filteredQuizzes; let i = index">
+
+        <!-- Numéro / indicateur -->
+        <div class="sq-item__index">{{ i + 1 < 10 ? '0' + (i + 1) : i + 1 }}</div>
+
+        <!-- Contenu principal -->
+        <div class="sq-item__body">
+          <h3 class="sq-item__title">{{ quiz.title }}</h3>
+          <p class="sq-item__desc">{{ quiz.description || 'Testez vos connaissances avec ce quiz interactif' }}</p>
+
+          <div class="sq-item__meta">
+            <span class="sq-meta-chip">
+              <i class="bi bi-list-check"></i>
+              {{ quiz.questionCount || 0 }} questions
+            </span>
+            <span class="sq-meta-chip" *ngIf="quiz.averageScore">
+              <i class="bi bi-bar-chart-line-fill"></i>
+              Moy. {{ quiz.averageScore | number:'1.0-0' }}%
+            </span>
+            <span class="sq-meta-chip">
+              <i class="bi bi-clock"></i>
+              ~{{ (quiz.questionCount || 0) * 2 }} min
+            </span>
+          </div>
+        </div>
+
+        <!-- Score bar (si disponible) -->
+        <div class="sq-item__score" *ngIf="quiz.averageScore">
+          <div class="sq-score-ring">
+            <svg viewBox="0 0 42 42" class="sq-score-ring__svg">
+              <circle class="sq-score-ring__bg" cx="21" cy="21" r="16" />
+              <circle 
+                class="sq-score-ring__fill" 
+                cx="21" cy="21" r="16"
+                [style.strokeDasharray]="(quiz.averageScore / 100 * 100.53) + ' 100.53'"
+              />
+            </svg>
+            <span class="sq-score-ring__label">{{ quiz.averageScore | number:'1.0-0' }}%</span>
+          </div>
+        </div>
+
+        <!-- CTA -->
+        <div class="sq-item__cta">
+          <button class="sq-btn-start" (click)="takeQuiz(quiz.id!)">
+            <span>Commencer</span>
+            <i class="bi bi-arrow-right"></i>
+          </button>
+        </div>
+
+      </article>
+    </div>
+
+  </main>
+
+  <app-footer></app-footer>
+</div>

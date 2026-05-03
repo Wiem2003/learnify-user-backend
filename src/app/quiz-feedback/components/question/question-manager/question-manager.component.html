@@ -1,0 +1,289 @@
+<div class="question-manager">
+  
+  <!-- Header -->
+  <header class="qm-header">
+    <button class="btn-back" (click)="goBack()">
+      <i class="bi bi-arrow-left"></i>
+      Retour
+    </button>
+    
+    <div class="header-info">
+      <h1 class="quiz-title">
+        <i class="bi bi-journal-text"></i>
+        {{ quiz?.title }}
+      </h1>
+      <div class="quiz-meta">
+        <span class="meta-badge">
+          <i class="bi bi-list-check"></i>
+          {{ questions.length }} questions
+        </span>
+        <span class="meta-badge">
+          <i class="bi bi-star-fill"></i>
+          {{ getTotalPoints() }} points
+        </span>
+      </div>
+    </div>
+    
+    <button class="btn-add-question" (click)="openEditor()">
+      <i class="bi bi-plus-lg"></i>
+      Nouvelle Question
+    </button>
+  </header>
+
+  <!-- Loading -->
+  <div *ngIf="loading" class="loading-state">
+    <div class="spinner"></div>
+    <p>Chargement des questions...</p>
+  </div>
+
+  <!-- Empty State -->
+  <div *ngIf="!loading && questions.length === 0" class="empty-state">
+    <div class="empty-icon">
+      <i class="bi bi-question-circle"></i>
+    </div>
+    <h3>Aucune question</h3>
+    <p>Commencez par créer votre première question pour ce quiz</p>
+    <button class="btn-create" (click)="openEditor()">
+      <i class="bi bi-plus-lg"></i>
+      Créer une Question
+    </button>
+  </div>
+
+  <!-- Questions List -->
+  <div *ngIf="!loading && questions.length > 0" class="questions-list">
+    <article 
+      *ngFor="let question of questions; let i = index"
+      class="question-card"
+      draggable="true"
+      (dragstart)="onDragStart(i)"
+      (dragover)="onDragOver($event)"
+      (drop)="onDrop($event, i)">
+      
+      <div class="question-drag-handle">
+        <i class="bi bi-grip-vertical"></i>
+      </div>
+      
+      <div class="question-number">{{ i + 1 }}</div>
+      
+      <div class="question-content">
+        <div class="question-header">
+          <div class="question-type">
+            <i [class]="getQuestionTypeIcon(question.type)"></i>
+            {{ getQuestionTypeLabel(question.type) }}
+          </div>
+          <div class="question-points">
+            <i class="bi bi-star-fill"></i>
+            {{ question.points }} pts
+          </div>
+        </div>
+        
+        <h3 class="question-text">{{ question.questionText }}</h3>
+        
+        <div class="question-options" *ngIf="question.options && question.options.length > 0">
+          <div 
+            *ngFor="let option of question.options; let j = index" 
+            class="option-item"
+            [class.correct]="option === question.correctAnswer">
+            <div class="option-indicator">
+              <i *ngIf="option === question.correctAnswer" class="bi bi-check-circle-fill"></i>
+              <i *ngIf="option !== question.correctAnswer" class="bi bi-circle"></i>
+            </div>
+            <span class="option-text">{{ option }}</span>
+          </div>
+        </div>
+        
+        <div class="question-explanation" *ngIf="question.explanation">
+          <i class="bi bi-lightbulb"></i>
+          <span>{{ question.explanation }}</span>
+        </div>
+      </div>
+      
+      <div class="question-actions">
+        <button class="btn-action btn-edit" (click)="openEditor(question)" title="Modifier">
+          <i class="bi bi-pencil"></i>
+        </button>
+        <button class="btn-action btn-duplicate" (click)="duplicateQuestion(question)" title="Dupliquer">
+          <i class="bi bi-files"></i>
+        </button>
+        <button class="btn-action btn-delete" (click)="deleteQuestion(question)" title="Supprimer">
+          <i class="bi bi-trash"></i>
+        </button>
+      </div>
+    </article>
+  </div>
+
+</div>
+
+<!-- Question Editor Modal -->
+<div class="modal-overlay" *ngIf="showEditor" (click)="closeEditor()">
+  <div class="editor-modal" (click)="$event.stopPropagation()">
+    
+    <div class="editor-header">
+      <h2>
+        <i class="bi bi-pencil-square"></i>
+        {{ editorMode === 'create' ? 'Nouvelle Question' : 'Modifier la Question' }}
+      </h2>
+      <button class="btn-close" (click)="closeEditor()">
+        <i class="bi bi-x-lg"></i>
+      </button>
+    </div>
+    
+    <div class="editor-body">
+      
+      <!-- Split View: Editor + Preview -->
+      <div class="editor-layout">
+        
+        <!-- Editor Panel -->
+        <div class="editor-panel">
+          
+          <!-- Question Type & Points -->
+          <div class="form-row">
+            <div class="form-group">
+              <label>Type de question</label>
+              <select [(ngModel)]="currentQuestion.type" class="form-control">
+                <option value="MULTIPLE_CHOICE">Choix multiple</option>
+                <option value="TRUE_FALSE">Vrai/Faux</option>
+                <option value="SHORT_ANSWER">Réponse courte</option>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label>Points</label>
+              <input 
+                type="number" 
+                [(ngModel)]="currentQuestion.points" 
+                class="form-control"
+                min="1"
+                max="100"
+              />
+            </div>
+          </div>
+          
+          <!-- Question Text -->
+          <div class="form-group">
+            <label>Question *</label>
+            <textarea 
+              [(ngModel)]="currentQuestion.questionText"
+              class="form-control"
+              rows="3"
+              placeholder="Entrez votre question ici..."
+            ></textarea>
+          </div>
+          
+          <!-- Options -->
+          <div class="form-group">
+            <label>Options de réponse *</label>
+            <div class="options-editor">
+              <div 
+                *ngFor="let option of currentQuestion.options; let i = index" 
+                class="option-editor-item">
+                
+                <button 
+                  class="option-radio"
+                  [class.selected]="option.isCorrect"
+                  (click)="setCorrectAnswer(i)"
+                  title="Marquer comme bonne réponse">
+                  <i *ngIf="option.isCorrect" class="bi bi-check-circle-fill"></i>
+                  <i *ngIf="!option.isCorrect" class="bi bi-circle"></i>
+                </button>
+                
+                <input 
+                  type="text" 
+                  [(ngModel)]="option.text"
+                  class="option-input"
+                  [placeholder]="'Option ' + (i + 1)"
+                />
+                
+                <button 
+                  class="btn-remove-option"
+                  (click)="removeOption(i)"
+                  *ngIf="currentQuestion.options.length > 2"
+                  title="Supprimer">
+                  <i class="bi bi-x-lg"></i>
+                </button>
+              </div>
+              
+              <button class="btn-add-option" (click)="addOption()">
+                <i class="bi bi-plus-lg"></i>
+                Ajouter une option
+              </button>
+            </div>
+          </div>
+          
+          <!-- Explanation -->
+          <div class="form-group">
+            <label>Explication (optionnel)</label>
+            <textarea 
+              [(ngModel)]="currentQuestion.explanation"
+              class="form-control"
+              rows="2"
+              placeholder="Expliquez pourquoi c'est la bonne réponse..."
+            ></textarea>
+          </div>
+          
+        </div>
+        
+        <!-- Preview Panel -->
+        <div class="preview-panel" *ngIf="showPreview">
+          <div class="preview-header">
+            <i class="bi bi-eye"></i>
+            Aperçu
+          </div>
+          
+          <div class="preview-content">
+            <div class="preview-question">
+              <div class="preview-meta">
+                <span class="preview-type">
+                  <i [class]="getQuestionTypeIcon(currentQuestion.type)"></i>
+                  {{ getQuestionTypeLabel(currentQuestion.type) }}
+                </span>
+                <span class="preview-points">{{ currentQuestion.points }} pts</span>
+              </div>
+              
+              <h3 class="preview-text">{{ currentQuestion.questionText || 'Votre question apparaîtra ici...' }}</h3>
+              
+              <div class="preview-options">
+                <div 
+                  *ngFor="let option of currentQuestion.options; let i = index"
+                  class="preview-option"
+                  [class.selected]="selectedPreviewAnswer === i"
+                  (click)="selectedPreviewAnswer = i">
+                  <div class="preview-option-radio">
+                    <i *ngIf="selectedPreviewAnswer === i" class="bi bi-check-circle-fill"></i>
+                    <i *ngIf="selectedPreviewAnswer !== i" class="bi bi-circle"></i>
+                  </div>
+                  <span>{{ option.text || 'Option ' + (i + 1) }}</span>
+                </div>
+              </div>
+              
+              <div class="preview-explanation" *ngIf="currentQuestion.explanation">
+                <i class="bi bi-lightbulb-fill"></i>
+                {{ currentQuestion.explanation }}
+              </div>
+            </div>
+          </div>
+        </div>
+        
+      </div>
+      
+    </div>
+    
+    <div class="editor-footer">
+      <button class="btn-preview" (click)="togglePreview()">
+        <i [class]="showPreview ? 'bi bi-eye-slash' : 'bi bi-eye'"></i>
+        {{ showPreview ? 'Masquer' : 'Aperçu' }}
+      </button>
+      
+      <div class="footer-actions">
+        <button class="btn-cancel" (click)="closeEditor()">
+          Annuler
+        </button>
+        <button class="btn-save" (click)="saveQuestion()">
+          <i class="bi bi-check-lg"></i>
+          {{ editorMode === 'create' ? 'Créer' : 'Enregistrer' }}
+        </button>
+      </div>
+    </div>
+    
+  </div>
+</div>
