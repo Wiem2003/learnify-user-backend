@@ -1,0 +1,53 @@
+﻿<div class="clubs-page container py-5">
+  <h2 class="mb-4">English Clubs</h2>
+
+  <div *ngIf="loading" class="text-center py-5">
+    <div class="spinner-border text-primary"></div>
+  </div>
+
+  <div *ngIf="error" class="alert alert-danger">{{ error }}</div>
+
+  <div class="row g-4">
+    <div class="col-md-4" *ngFor="let club of clubs">
+      <div class="card h-100 shadow-sm">
+        <div class="card-body">
+          <h5 class="card-title">{{ club.name }}</h5>
+          <p class="card-text text-muted">{{ club.description }}</p>
+
+          <div class="d-flex gap-2 mb-3 flex-wrap">
+            <span class="badge bg-primary">Level: {{ club.requiredLevel || 'A1' }}+</span>
+            <span class="badge bg-secondary">
+              {{ club.currentMembers || 0 }}/{{ club.capacity || club.maxMembers || 0 }} members
+            </span>
+          </div>
+
+          <!-- Status badge -->
+          <ng-container [ngSwitch]="getRequestStatus(club.id)">
+            <span *ngSwitchCase="'PENDING'" class="badge bg-warning text-dark">Request Pending</span>
+            <span *ngSwitchCase="'ACCEPTED'" class="badge bg-success">Member</span>
+            <span *ngSwitchCase="'REJECTED'" class="badge bg-danger">Rejected</span>
+          </ng-container>
+        </div>
+
+        <div class="card-footer bg-transparent d-flex gap-2">
+          <!-- Join button -->
+          <button
+            *ngIf="!getRequestStatus(club.id)"
+            class="btn btn-primary btn-sm"
+            [disabled]="isFull(club)"
+            (click)="requestJoin(club)">
+            {{ isFull(club) ? 'Full' : 'Request Access' }}
+          </button>
+
+          <!-- Chat button (only for accepted members) -->
+          <button
+            *ngIf="getRequestStatus(club.id) === 'ACCEPTED'"
+            class="btn btn-success btn-sm"
+            (click)="openChat(club)">
+            <i class="bi bi-chat-dots"></i> Open Chat
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
