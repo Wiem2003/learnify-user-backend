@@ -7,7 +7,7 @@ import { environment } from '../../../environments/environment';
   selector: 'app-pin-check',
   standalone: false,
   templateUrl: './pin-check.html',
-  styleUrls: ['./pin-check.css']
+  styleUrls: ['./pin-check.css', '../signin/signin.css']
 })
 export class PinCheck {
   pin = '';

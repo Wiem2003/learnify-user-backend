@@ -55,6 +55,11 @@
         },
         "serve": {
           "builder": "@angular-devkit/build-angular:dev-server",
+          "options": {
+            "proxyConfig": "proxy.conf.mjs",
+            "host": "0.0.0.0",
+            "allowedHosts": ["all"]
+          },
           "configurations": {
             "production": { "buildTarget": "learnhub:build:production" },
             "development": { "buildTarget": "learnhub:build:development" }

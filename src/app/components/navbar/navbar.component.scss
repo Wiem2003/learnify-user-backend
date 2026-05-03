@@ -201,12 +201,12 @@
   }
 }
 
-// Navbar Actions
+// Navbar Actions — ms-lg-auto dans le template pousse Sign In / Get Started à droite sur desktop
 .navbar-actions {
   display: flex;
   align-items: center;
   gap: 1rem;
-  margin-left: 1.5rem;
+  flex-shrink: 0;
 }
 
 .btn-link {

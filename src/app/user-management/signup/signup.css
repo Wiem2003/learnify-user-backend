@@ -1,18 +1,20 @@
-/* ── Auth page wrapper ────────────────────────────────── */
+/* ── Auth page wrapper (aligné UandPManagement) ───────── */
 .auth-page {
   min-height: 100vh;
   display: flex;
   align-items: center;
   padding: 6rem 1rem 3rem;
-  background: linear-gradient(135deg, #f8f9ff 0%, #f0f1ff 100%);
+  background: var(--color-background);
+  font-family: var(--font-family);
 }
 
 /* ── Auth card ────────────────────────────────────────── */
 .auth-card {
-  background: #fff;
-  border-radius: 20px;
+  background: var(--color-white);
+  border-radius: 1.35rem;
   padding: 2.5rem 2rem;
-  box-shadow: 0 4px 40px rgba(61, 61, 96, 0.10);
+  box-shadow: var(--shadow-card);
+  border: 1px solid rgba(26, 46, 53, 0.08);
 }
 
 /* ── Logo ─────────────────────────────────────────────── */
@@ -130,25 +132,26 @@
   }
 }
 
-/* ── Google button ────────────────────────────────────── */
+/* ── Google button (style Learnify comme UandPManagement) ─ */
 .btn-google {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 0.6rem;
-  background: #fff;
-  border: 1.5px solid #e5e7eb;
-  border-radius: 10px;
-  padding: 0.65rem 1rem;
+  background: var(--color-primary) !important;
+  color: var(--color-white) !important;
+  border: none !important;
+  border-radius: var(--radius-full) !important;
+  padding: 0.75rem 1rem;
   font-size: 0.95rem;
-  font-weight: 500;
-  color: #374151;
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s;
+  box-shadow: 0 4px 14px rgba(26, 46, 53, 0.2);
+  transition: background var(--transition-fast), color var(--transition-fast);
 
   &:hover {
-    background: #f9fafb;
-    border-color: #d1d5db;
+    background: var(--color-primary-light) !important;
+    color: var(--color-white) !important;
   }
 }
 
@@ -157,7 +160,7 @@
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  color: #9ca3af;
+  color: var(--color-gray-500);
   font-size: 0.85rem;
   margin: 1rem 0;
 
@@ -166,7 +169,7 @@
     content: '';
     flex: 1;
     height: 1px;
-    background: #e5e7eb;
+    background: rgba(26, 46, 53, 0.12);
   }
 }
 
@@ -192,20 +195,20 @@
 
 /* ── Submit button ────────────────────────────────────── */
 .btn-submit {
-  background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
-  color: #fff;
+  background: var(--color-cta) !important;
+  color: var(--color-white) !important;
   border: none;
-  border-radius: 10px;
+  border-radius: var(--radius-full) !important;
   padding: 0.75rem 1rem;
   font-size: 1rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s;
-  box-shadow: 0 4px 15px rgba(79, 70, 229, 0.3);
+  transition: all var(--transition-fast);
+  box-shadow: 0 4px 14px rgba(200, 76, 50, 0.25);
 
   &:hover:not(:disabled) {
+    background: var(--color-cta-light) !important;
     transform: translateY(-1px);
-    box-shadow: 0 6px 20px rgba(79, 70, 229, 0.4);
   }
 
   &:disabled {
@@ -217,10 +220,10 @@
 /* ── Footer link ──────────────────────────────────────── */
 .auth-footer-link {
   font-size: 0.9rem;
-  color: #6b7280;
+  color: var(--color-gray-600);
 
   a {
-    color: #4f46e5;
+    color: var(--color-cta);
     font-weight: 600;
     text-decoration: none;
 

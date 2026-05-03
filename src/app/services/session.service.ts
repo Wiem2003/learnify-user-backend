@@ -21,6 +21,11 @@ export class SessionService {
     localStorage.setItem('session_user', JSON.stringify(user));
   }
 
+  /** État courant (ex. repli si GET /me échoue). */
+  getCurrentUser(): SessionUser | null {
+    return this.userSubject.getValue();
+  }
+
   clear() {
     this.userSubject.next(null);
     localStorage.removeItem('session_user');

@@ -76,7 +76,14 @@ export class AddTutorComponent {
         this.loading = false;
         this.msg = '';
         const msg = e?.error?.message || e?.error?.error;
-        this.err = e?.status === 401 ? 'Unauthorized. Please log in as Admin.' : (msg || 'Failed to create tutor');
+        if (e?.status === 401) {
+          this.err = 'Non autorisé. Connecte-toi avec un compte Admin (@learnify.com, onglet Admin).';
+        } else if (e?.status === 403) {
+          this.err =
+            'Accès refusé. Déconnecte-toi puis reconnecte-toi en Admin, ou vide les cookies pour ce site si tu as aussi utilisé « Continue with Google » sur le même navigateur.';
+        } else {
+          this.err = msg || 'Échec de la création du tuteur.';
+        }
       }
     });
   }

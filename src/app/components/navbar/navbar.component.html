@@ -3,7 +3,7 @@
     <!-- Brand -->
     <a class="navbar-brand d-inline-flex gap-2 align-items-center lh-1" 
        href="#" 
-       (click)="navigateToPage('/'); $event.preventDefault()">
+       (click)="onBrandClick($event)">
       <span class="brand-icon">
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/>
@@ -23,60 +23,55 @@
       </span>
     </button>
 
-    <!-- Navigation -->
+    <!-- Menu modules : uniquement une fois connecté (microservices course / payment / job / …) -->
     <div class="collapse navbar-collapse" id="navbarSupportedContent">
-      <ul class="navbar-nav mx-auto mb-2 mb-lg-0">
-        <!-- Home -->
+      <ul class="navbar-nav mx-auto mb-2 mb-lg-0" *ngIf="currentUser">
         <li class="nav-item">
           <a href="/" class="nav-link" [class.active]="isActiveRoute('/')"
              (click)="navigateToPage('/'); $event.preventDefault()">
             <i class="ti ti-home"></i> Home
           </a>
         </li>
-
-        <!-- Courses -->
         <li class="nav-item">
           <a href="/courses" class="nav-link" [class.active]="isActiveRoute('/courses')"
              (click)="navigateToPage('/courses'); $event.preventDefault()">
             <i class="ti ti-book"></i> Courses
           </a>
         </li>
-
-        <!-- Clubs -->
+        <li class="nav-item">
+          <a href="/cart" class="nav-link" [class.active]="isActiveRoute('/cart')"
+             (click)="navigateToPage('/cart'); $event.preventDefault()">
+            <i class="ti ti-shopping-cart"></i> Cart
+          </a>
+        </li>
         <li class="nav-item">
           <a href="/clubs" class="nav-link" [class.active]="isActiveRoute('/clubs')"
              (click)="navigateToPage('/clubs'); $event.preventDefault()">
             <i class="ti ti-users"></i> Clubs
           </a>
         </li>
-
-        <!-- Events -->
         <li class="nav-item">
           <a href="/events" class="nav-link" [class.active]="isActiveRoute('/events')"
              (click)="navigateToPage('/events'); $event.preventDefault()">
             <i class="ti ti-calendar"></i> Events
           </a>
         </li>
-
-        <!-- Events Advanced (with all features) -->
         <li class="nav-item">
           <a href="/events-advanced" class="nav-link" [class.active]="isActiveRoute('/events-advanced')"
              (click)="navigateToPage('/events-advanced'); $event.preventDefault()">
             <i class="ti ti-star"></i> Events Pro
           </a>
         </li>
-
-        <!-- More Dropdown -->
         <li class="nav-item dropdown">
-          <a class="nav-link dropdown-toggle" href="#" id="moreDropdown" role="button" data-bs-toggle="dropdown">
+          <a class="nav-link dropdown-toggle" href="#" id="moreDropdownAuth" role="button" data-bs-toggle="dropdown">
             <i class="ti ti-dots"></i> More
           </a>
-          <ul class="dropdown-menu" aria-labelledby="moreDropdown">
+          <ul class="dropdown-menu" aria-labelledby="moreDropdownAuth">
+            <li><a class="dropdown-item" href="/payment" (click)="navigateToPage('/payment'); $event.preventDefault()"><i class="ti ti-credit-card"></i> Payment</a></li>
             <li><a class="dropdown-item" href="/schedule" (click)="navigateToPage('/schedule'); $event.preventDefault()"><i class="ti ti-calendar-time"></i> Schedule</a></li>
             <li><a class="dropdown-item" href="/certificate" (click)="navigateToPage('/certificate'); $event.preventDefault()"><i class="ti ti-award"></i> Certificate</a></li>
             <li><a class="dropdown-item" href="/quizzes" (click)="navigateToPage('/quizzes'); $event.preventDefault()"><i class="ti ti-brain"></i> Quizzes</a></li>
-            <li><hr class="dropdown-divider">
-            <li><a class="dropdown-item" href="/payment" (click)="navigateToPage('/payment'); $event.preventDefault()"><i class="ti ti-credit-card"></i> Payment</a></li>
+            <li><hr class="dropdown-divider"></li>
             <li><a class="dropdown-item" href="/messenger" (click)="navigateToPage('/messenger'); $event.preventDefault()"><i class="ti ti-messages"></i> Messenger</a></li>
             <li><a class="dropdown-item" href="/feedbacks" (click)="navigateToPage('/feedbacks'); $event.preventDefault()"><i class="ti ti-message-dots"></i> Feedback</a></li>
             <li><a class="dropdown-item" href="/cv" (click)="navigateToPage('/cv'); $event.preventDefault()"><i class="ti ti-file-description"></i> CV Builder</a></li>
@@ -87,11 +82,11 @@
         </li>
       </ul>
 
-      <!-- CTA Buttons -->
-      <div class="navbar-actions">
+      <!-- CTA / profil : toujours à droite (comme avant) -->
+      <div class="navbar-actions ms-lg-auto">
         <ng-container *ngIf="!currentUser; else loggedIn">
           <a href="/auth/login?role=student" class="btn-link">Sign In</a>
-          <a href="/auth/signup?role=student" class="btn-cta">
+          <a href="/auth/signup-choice" class="btn-cta">
             Get Started
             <i class="ti ti-arrow-right"></i>
           </a>
@@ -139,8 +134,8 @@
           <div class="user-menu dropdown">
             <button class="btn-user dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
               <span class="user-avatar">
-                <img *ngIf="currentUser?.avatarUrl; else avatarInitials"
-                     [src]="currentUser!.avatarUrl" alt="avatar" />
+                <img *ngIf="avatarSrc(); else avatarInitials"
+                     [src]="avatarSrc()!" alt="avatar" />
                 <ng-template #avatarInitials>
                   <span class="avatar-initials">{{ (currentUser!.firstName || '?')[0] | uppercase }}</span>
                 </ng-template>
@@ -156,6 +151,11 @@
               <li *ngIf="currentUser!.role === 'ADMIN'">
                 <a class="dropdown-item" href="/admin">
                   <i class="ti ti-layout-dashboard me-2"></i>Admin Panel
+                </a>
+              </li>
+              <li>
+                <a class="dropdown-item" [routerLink]="currentUser!.role === 'ADMIN' ? '/admin/profile' : '/profile'">
+                  <i class="ti ti-user me-2"></i>My profile
                 </a>
               </li>
               <li>

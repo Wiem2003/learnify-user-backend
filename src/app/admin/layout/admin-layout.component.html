@@ -14,6 +14,7 @@
       <a *ngFor="let item of navItems"
          [routerLink]="item.path"
          routerLinkActive="active"
+         [routerLinkActiveOptions]="{ exact: !!item.linkExact }"
          class="nav-item">
         <i [class]="item.icon"></i>
         <span class="nav-label">{{ item.label }}</span>
@@ -21,7 +22,7 @@
     </nav>
 
     <div class="sidebar-footer">
-      <a routerLink="/" class="nav-item back-link">
+      <a href="/" class="nav-item back-link">
         <i class="ti ti-arrow-left"></i>
         <span class="nav-label">Back to Site</span>
       </a>
@@ -42,23 +43,34 @@
         </div>
       </div>
       <div class="header-right">
-        <button class="header-icon-btn" title="Notifications">
-          <i class="ti ti-bell"></i>
-          <span class="notification-dot"></span>
-        </button>
-        <button class="header-icon-btn" title="Messages">
-          <i class="ti ti-message"></i>
-        </button>
         <div class="header-divider"></div>
-        <div class="user-menu">
+
+        <div class="user-menu" *ngIf="session.user$ | async as user; else noUser">
           <div class="user-avatar">
-            <i class="ti ti-user"></i>
+            @if (avatarSrc(user); as src) {
+              <img [src]="src" alt="" class="avatar-img" />
+            } @else {
+              <i class="ti ti-user"></i>
+            }
           </div>
           <div class="user-info">
-            <span class="user-name">Admin User</span>
-            <span class="user-role">Super Admin</span>
+            <span class="user-name">{{ user.firstName }} {{ user.lastName }}</span>
+            <span class="user-role">{{ user.role || 'Admin' }}</span>
           </div>
         </div>
+
+        <ng-template #noUser>
+          <div class="user-menu">
+            <div class="user-avatar"><i class="ti ti-user"></i></div>
+            <div class="user-info">
+              <span class="user-name">Admin</span>
+            </div>
+          </div>
+        </ng-template>
+
+        <button type="button" class="header-icon-btn logout-btn" title="Logout" (click)="logout()">
+          <i class="ti ti-logout"></i>
+        </button>
       </div>
     </header>
 

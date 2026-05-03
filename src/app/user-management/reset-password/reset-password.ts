@@ -6,7 +6,7 @@ import { AuthService } from '../../services/auth.service';
   selector: 'app-reset-password',
   standalone: false,
   templateUrl: './reset-password.html',
-  styleUrls: ['./reset-password.css']
+  styleUrls: ['./reset-password.css', '../signin/signin.css']
 })
 export class ResetPassword implements OnInit {
 

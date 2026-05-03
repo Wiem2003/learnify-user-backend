@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { environment } from '../../environments/environment';
 
 export type UserSessionDto = {
   sessionId: string;
@@ -15,7 +16,7 @@ export type UserSessionDto = {
 @Injectable({ providedIn: 'root' })
 export class SessionsService {
 
-  private readonly API = 'http://localhost:8080/api/me';
+  private readonly API = `${environment.apiGatewayUrl}/api/me`;
 
   constructor(private http: HttpClient) {}
 

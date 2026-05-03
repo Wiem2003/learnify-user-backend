@@ -44,4 +44,26 @@ export class AuthService {
   resetPassword(data: { email: string; pin: string; newPassword: string; confirmNewPassword: string }): Observable<any> {
     return this.http.post(`${this.baseUrl}/reset-password`, data, { responseType: 'text' as const });
   }
+
+  unblockRequest(email: string): Observable<any> {
+    return this.http.post(`${this.baseUrl}/unblock-request`, { email }, { responseType: 'text' as const });
+  }
+
+  unblockVerify(email: string, pin: string): Observable<any> {
+    return this.http.post(`${this.baseUrl}/unblock-verify`, { email, pin }, { responseType: 'text' as const });
+  }
+
+  confirmDevice(token: string) {
+    return this.http.post<any>(
+      `${this.baseUrl}/device/confirm?token=${encodeURIComponent(token)}`,
+      {}
+    );
+  }
+
+  rejectDevice(token: string) {
+    return this.http.post<any>(
+      `${this.baseUrl}/device/reject?token=${encodeURIComponent(token)}`,
+      {}
+    );
+  }
 }

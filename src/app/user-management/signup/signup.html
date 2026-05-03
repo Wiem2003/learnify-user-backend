@@ -27,7 +27,7 @@
               <button type="button" class="role-card" (click)="selectRole('student')">
                 <span class="role-icon"><i class="ti ti-school"></i></span>
                 <strong>Student</strong>
-                <span class="role-desc">Enroll in courses, take quizzes,<br>track your progress</span>
+                <span class="role-desc">Learn, take quizzes,<br>track your progress</span>
               </button>
 
               <button type="button" class="role-card" (click)="selectRole('candidate')">
@@ -35,12 +35,6 @@
                 <strong>Candidate</strong>
                 <span class="role-desc">Apply for jobs, build your CV,<br>discover opportunities</span>
               </button>
-
-              <div class="role-card role-card--info" style="cursor:default; opacity:0.75;">
-                <span class="role-icon"><i class="ti ti-chalkboard"></i></span>
-                <strong>Tutor</strong>
-                <span class="role-desc">Tutor accounts are created by an admin.<br>Contact <a href="mailto:admin&#64;learnify.com">admin&#64;learnify.com</a> to apply.</span>
-              </div>
 
             </div>
 
@@ -78,8 +72,9 @@
               <span class="role-badge role-badge--{{ role }}">{{ role | titlecase }}</span>
             </h2>
 
-            <!-- Google OAuth -->
-            <button type="button" class="btn-google w-100 mb-3" (click)="continueWithGoogle()">
+            <!-- Google OAuth (student / candidate uniquement, comme ang) -->
+            <button *ngIf="role === 'student' || role === 'candidate'"
+                    type="button" class="btn-google w-100 mb-3" (click)="continueWithGoogle()">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
                 <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>

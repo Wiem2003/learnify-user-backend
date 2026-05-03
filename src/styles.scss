@@ -15,19 +15,19 @@
 // Modern CSS Variables - EdTech SaaS Design
 // ============================================
 :root {
-  // Brand Colors
-  --color-primary: #3D3D60;
-  --color-secondary: #2D5757;
-  --color-accent: #F6BD60;
-  --color-cta: #C84630;
-  --color-background: #F7EDE2;
+  // Brand Colors (alignés projet LearnifyEnglish / UandPManagement)
+  --color-primary: #1a2e35;
+  --color-secondary: #2d5757;
+  --color-accent: #f6bd60;
+  --color-cta: #c84c32;
+  --color-background: #f9f3eb;
   
   // Extended Palette
-  --color-primary-light: #5a5a85;
-  --color-primary-dark: #2a2a45;
+  --color-primary-light: #2f4a54;
+  --color-primary-dark: #121f24;
   --color-secondary-light: #3d7a7a;
   --color-accent-light: #f8cf87;
-  --color-cta-light: #d96a5a;
+  --color-cta-light: #d9654a;
   
   // Neutral Colors
   --color-white: #ffffff;
@@ -85,8 +85,8 @@
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
   --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
   --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-  --shadow-card: 0 4px 20px rgba(61, 61, 96, 0.08);
-  --shadow-card-hover: 0 12px 40px rgba(61, 61, 96, 0.15);
+  --shadow-card: 0 8px 30px rgba(26, 46, 53, 0.08);
+  --shadow-card-hover: 0 16px 48px rgba(26, 46, 53, 0.12);
   
   // Transitions
   --transition-fast: 150ms ease;
@@ -409,4 +409,75 @@ a {
   .section-padding {
     padding: var(--spacing-2xl) 0;
   }
+}
+
+// ============================================
+// Surface Learnify (profil utilisateur — même logique que UandPManagement)
+// ============================================
+.learnify-surface {
+  background-color: var(--color-background) !important;
+  font-family: var(--font-family);
+}
+
+.learnify-surface .text-primary,
+.learnify-surface .text-primary:focus {
+  color: var(--color-cta) !important;
+}
+
+.learnify-surface .btn-primary {
+  background-color: var(--color-cta) !important;
+  border-color: var(--color-cta) !important;
+  color: var(--color-white) !important;
+  border-radius: var(--radius-full) !important;
+  font-weight: 600;
+  padding-left: 1.25rem;
+  padding-right: 1.25rem;
+  box-shadow: 0 4px 14px rgba(200, 76, 50, 0.25);
+}
+
+.learnify-surface .btn-primary:hover:not(:disabled) {
+  background-color: var(--color-cta-light) !important;
+  border-color: var(--color-cta-light) !important;
+  color: var(--color-white) !important;
+}
+
+.learnify-surface .btn-outline-primary {
+  color: var(--color-primary) !important;
+  border-color: var(--color-primary) !important;
+  border-radius: var(--radius-full) !important;
+  font-weight: 600;
+}
+
+.learnify-surface .btn-outline-primary:hover:not(:disabled) {
+  background-color: var(--color-primary) !important;
+  color: var(--color-white) !important;
+}
+
+.learnify-surface .btn-outline-secondary {
+  border-radius: var(--radius-full) !important;
+}
+
+.learnify-surface .card {
+  border-radius: 1.35rem !important;
+  border: 1px solid rgba(26, 46, 53, 0.08) !important;
+  box-shadow: var(--shadow-card) !important;
+}
+
+.learnify-surface .badge.bg-primary {
+  background-color: var(--color-cta) !important;
+}
+
+.learnify-surface h1,
+.learnify-surface h2,
+.learnify-surface .h3,
+.learnify-surface .h4,
+.learnify-surface .h5,
+.learnify-surface .h6 {
+  color: var(--color-primary);
+}
+
+.learnify-surface .alert-info {
+  background-color: rgba(45, 87, 87, 0.1);
+  border-color: rgba(45, 87, 87, 0.2);
+  color: var(--color-primary);
 }

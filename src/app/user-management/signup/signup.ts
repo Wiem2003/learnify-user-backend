@@ -21,6 +21,8 @@ export class Signup implements OnInit {
   role: string = '';  // '' means not chosen yet — shows role picker
 
   loading = false;
+  /** Évite deux requêtes POST si double clic / double soumission du formulaire. */
+  private submitInFlight = false;
   error = '';
 
   constructor(
@@ -62,6 +64,7 @@ export class Signup implements OnInit {
   }
 
   onSubmit(form: { valid?: boolean | null }) {
+    if (this.submitInFlight) return;
     this.error = '';
 
     if (form?.valid !== true) return;
@@ -81,6 +84,7 @@ export class Signup implements OnInit {
       password: this.password
     };
 
+    this.submitInFlight = true;
     this.loading = true;
 
     const req$ = (r === 'student')
@@ -90,11 +94,19 @@ export class Signup implements OnInit {
     req$.subscribe({
       next: () => {
         this.loading = false;
+        this.submitInFlight = false;
         this.router.navigate(['/auth/login'], { queryParams: { role: r, message: 'Account created! Please sign in.' } });
       },
       error: (err: any) => {
         this.loading = false;
-        this.error = err?.error?.message || 'Signup failed';
+        this.submitInFlight = false;
+        const code = err?.error?.code;
+        if (err?.status === 409 || code === 'EMAIL_EXISTS') {
+          this.error = err?.error?.message
+            || 'Cette adresse e-mail est déjà utilisée. Connectez-vous ou utilisez une autre adresse.';
+        } else {
+          this.error = err?.error?.message || 'Signup failed';
+        }
         console.error('signup error', err);
       }
     });
@@ -107,6 +119,6 @@ export class Signup implements OnInit {
     const deviceId = getOrCreateDeviceId();
     this.setDeviceIdCookie(deviceId);
 
-    window.location.href = `${environment.apiGatewayUrl}/oauth2/authorize/google/signup/${r.toUpperCase()}`;
+    window.location.href = `${environment.oauthUserServiceUrl}/oauth2/authorize/google/signup/${r.toUpperCase()}`;
   }
 }

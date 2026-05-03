@@ -1,17 +1,18 @@
 import { Component, signal, HostListener, inject, OnInit, OnDestroy, ElementRef } from '@angular/core';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { Subscription, interval } from 'rxjs';
 import { switchMap, startWith } from 'rxjs/operators';
 import { SessionService, SessionUser } from '../../services/session.service';
 import { JobNotificationService, JobNotification } from '../../services/job-notification.service';
+import { resolveAvatarUrl } from '../../utils/avatar-url.util';
 
 @Component({
   selector: 'app-navbar',
   templateUrl: './navbar.component.html',
   styleUrl: './navbar.component.scss',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, RouterLink],
 })
 export class NavbarComponent implements OnInit, OnDestroy {
   activeSection = signal<string>('hero');
@@ -148,7 +149,12 @@ export class NavbarComponent implements OnInit, OnDestroy {
 
   // Navigation vers une page
   navigateToPage(route: string) {
-    this.router.navigate([route]);
+    this.router.navigateByUrl(route.startsWith('/') ? route : `/${route}`);
+  }
+
+  onBrandClick(event: Event): void {
+    event.preventDefault();
+    this.router.navigateByUrl('/');
   }
 
   isHomePage(): boolean {
@@ -167,5 +173,10 @@ export class NavbarComponent implements OnInit, OnDestroy {
 
   navigateToSignup() {
     this.router.navigate(['/auth/signup'], { queryParams: { role: 'student' } });
+  }
+
+  /** Avatar affichable (chemins /uploads/... proxifiés vers le user-service en dev). */
+  avatarSrc(): string | null {
+    return resolveAvatarUrl(this.currentUser?.avatarUrl);
   }
 }

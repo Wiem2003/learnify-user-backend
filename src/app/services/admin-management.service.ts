@@ -19,6 +19,8 @@ export interface UserProfile {
   role?: string;
   avatarUrl?: string;
   about?: string;
+  /** Niveau final synchronisé depuis le service préévaluation (GET /api/users/me). */
+  preevaluationFinalLevel?: string | null;
 }
 
 @Injectable({ providedIn: 'root' })

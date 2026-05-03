@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { HttpClient, HttpErrorResponse, HttpHeaders } from '@angular/common/http';
+import { Observable, catchError, of, throwError } from 'rxjs';
 import { environment } from '../../environments/environment';
 
 export interface JobNotification {
@@ -23,11 +23,19 @@ export class JobNotificationService {
   }
 
   getMyNotifications(): Observable<JobNotification[]> {
-    return this.http.get<JobNotification[]>(this.base, { headers: this.authHeaders() });
+    return this.http.get<JobNotification[]>(this.base, { headers: this.authHeaders() }).pipe(
+      catchError((err: HttpErrorResponse) =>
+        err.status === 403 || err.status === 401 ? of([]) : throwError(() => err)
+      )
+    );
   }
 
   getUnreadCount(): Observable<number> {
-    return this.http.get<number>(`${this.base}/unread-count`, { headers: this.authHeaders() });
+    return this.http.get<number>(`${this.base}/unread-count`, { headers: this.authHeaders() }).pipe(
+      catchError((err: HttpErrorResponse) =>
+        err.status === 403 || err.status === 401 ? of(0) : throwError(() => err)
+      )
+    );
   }
 
   markAsRead(id: number): Observable<void> {

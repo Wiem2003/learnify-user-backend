@@ -167,7 +167,7 @@ export class VoiceCommandComponent implements OnInit, OnDestroy {
    */
   private keyboardHandler = (event: KeyboardEvent) => {
     // Vérifier si la touche "M" est pressée (sans Ctrl, Alt, Shift)
-    if (event.key.toLowerCase() === 'm' && !event.ctrlKey && !event.altKey && !event.shiftKey) {
+    if (event.key?.toLowerCase() === 'm' && !event.ctrlKey && !event.altKey && !event.shiftKey) {
       // Ne pas activer si l'utilisateur est en train de taper dans un champ
       const target = event.target as HTMLElement;
       const isInputField = target.tagName === 'INPUT' || 

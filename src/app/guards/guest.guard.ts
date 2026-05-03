@@ -17,10 +17,23 @@ function isJwtExpired(token: string): boolean {
  * If the user is logged in with a valid (non-expired) JWT → redirect to /.
  * If the JWT is expired → clear session and allow access to auth pages.
  * Otherwise → allow access.
+ *
+ * Certain auth sub-routes (device / QR approval) must stay reachable even with an
+ * existing session (email links, second device), so they bypass the redirect.
  */
-export const guestGuard: CanActivateFn = () => {
+export const guestGuard: CanActivateFn = (_route, state) => {
   const session = inject(SessionService);
   const router = inject(Router);
+
+  const path = state.url.split('?')[0];
+  if (
+    path === '/auth/device-pending' ||
+    path === '/auth/device-confirm' ||
+    path === '/auth/device-reject' ||
+    path === '/auth/qr-approve'
+  ) {
+    return true;
+  }
 
   return session.user$.pipe(
     take(1),

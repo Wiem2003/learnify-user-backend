@@ -5,6 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { AdminManagementService, UserProfile } from '../../services/admin-management.service';
 import { SessionService } from '../../services/session.service';
 import { SessionsService, UserSessionDto } from '../../services/sessions.service';
+import { resolveAvatarUrl } from '../../utils/avatar-url.util';
 
 @Component({
   selector: 'app-admin-profile',
@@ -17,6 +18,7 @@ export class AdminProfileComponent implements OnInit {
 
   user: UserProfile = {} as UserProfile;
   loading = false;
+  cacheBuster = 0;
 
   sessions: UserSessionDto[] = [];
   sessionsLoading = false;
@@ -38,6 +40,7 @@ export class AdminProfileComponent implements OnInit {
       next: (u) => {
         this.user = u;
         this.loading = false;
+        this.cacheBuster = Date.now();
 
         this.session.setUser({
           firstName: u.firstName,
@@ -51,6 +54,10 @@ export class AdminProfileComponent implements OnInit {
     });
   }
 
+  get displayAvatar(): string | null {
+    return resolveAvatarUrl(this.user?.avatarUrl, this.cacheBuster);
+  }
+
   save(): void {
     this.loading = true;
     this.adminService.updateMe({
@@ -62,6 +69,7 @@ export class AdminProfileComponent implements OnInit {
       next: (u) => {
         this.user = u;
         this.loading = false;
+        this.cacheBuster = Date.now();
 
         this.session.setUser({
           firstName: u.firstName,

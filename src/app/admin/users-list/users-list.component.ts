@@ -1,5 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { AdminManagementService, UserProfile } from '../../services/admin-management.service';
+import { resolveAvatarUrl } from '../../utils/avatar-url.util';
 
 @Component({
   selector: 'app-users-list',
@@ -22,8 +23,6 @@ export class UsersListComponent implements OnInit {
   // Sorting
   sortField: 'id' | 'name' | 'email' = 'id';
   sortDir: 'asc' | 'desc' = 'asc';
-
-  private readonly API_BASE = 'http://localhost:8080';
 
   constructor(private adminService: AdminManagementService) {}
 
@@ -100,9 +99,7 @@ export class UsersListComponent implements OnInit {
   }
 
   getAvatar(u: UserProfile): string | null {
-    if (!u.avatarUrl) return null;
-    if (u.avatarUrl.startsWith('http')) return u.avatarUrl;
-    return this.API_BASE + u.avatarUrl;
+    return resolveAvatarUrl(u.avatarUrl ?? null);
   }
 
   onAvatarError(u: UserProfile) {

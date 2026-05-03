@@ -73,10 +73,14 @@ export class ApiGatewayInterceptor implements HttpInterceptor {
         case 503:
           errorMessage = 'Service unavailable. Please try again later.';
           break;
+        case 423:
+          errorMessage = 'Account locked. Use the PIN sent by email to unblock.';
+          break;
       }
     }
 
     console.error('[API Gateway] Error:', errorMessage, error);
-    return throwError(() => new Error(errorMessage));
+    // Conserver HttpErrorResponse pour que les écrans (login 423 blocage, 403 device, etc.) lisent status + error.error
+    return throwError(() => error);
   }
 }

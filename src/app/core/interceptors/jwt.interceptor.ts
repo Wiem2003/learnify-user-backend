@@ -13,6 +13,10 @@ export class JwtInterceptor implements HttpInterceptor {
       '/api/auth/register',
       '/api/auth/forgot-password',
       '/api/auth/reset-password',
+      '/api/auth/unblock-request',
+      '/api/auth/unblock-verify',
+      // Confirmation nouveau device (sans JWT)
+      '/api/auth/device',
 
       // Passkey login (public)
       '/api/webauthn/authenticate'

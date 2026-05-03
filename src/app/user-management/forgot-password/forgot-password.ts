@@ -1,12 +1,13 @@
 import { Component } from '@angular/core';
 import { Router } from '@angular/router';
+import { HttpErrorResponse } from '@angular/common/http';
 import { AuthService } from '../../services/auth.service';
 
 @Component({
   selector: 'app-forgot-password',
   standalone: false,
   templateUrl: './forgot-password.html',
-  styleUrls: ['./forgot-password.css']
+  styleUrls: ['./forgot-password.css', '../signin/signin.css']
 })
 export class ForgotPassword {
 
@@ -40,9 +41,24 @@ export class ForgotPassword {
           });
         }, 500);
       },
-      error: (err) => {
+      error: (err: unknown) => {
         this.loading = false;
-        this.error = err?.error || 'Failed to send PIN.';
+        const http = err as HttpErrorResponse;
+        if (http?.status === 0) {
+          this.error =
+            'Cannot reach the server. Start user-service on port 8087 (or fix the dev proxy).';
+          return;
+        }
+        const body = http?.error;
+        if (typeof body === 'string' && body.trim()) {
+          this.error = body;
+          return;
+        }
+        if (body && typeof body === 'object' && 'message' in body && String((body as { message: string }).message)) {
+          this.error = String((body as { message: string }).message);
+          return;
+        }
+        this.error = http?.message?.trim() || 'Failed to send PIN.';
       }
     });
   }

@@ -330,10 +330,18 @@ $header-height: 70px;
   align-items: center;
   justify-content: center;
   box-shadow: 0 4px 12px rgba(61, 61, 96, 0.25);
+  overflow: hidden;
 
   i {
     font-size: 18px;
     color: #fff;
+  }
+
+  .avatar-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
   }
 }
 

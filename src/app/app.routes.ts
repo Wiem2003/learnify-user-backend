@@ -5,7 +5,12 @@ import { CourseManagementComponent } from './pages/course-management/course-mana
 import { ClubsComponent } from './pages/clubs/clubs.component';
 import { EventsComponent } from './pages/events/events.component';
 import { MessengerComponent } from './pages/messenger/messenger.component';
-import { PreevaluationComponent } from './pages/preevaluation/preevaluation.component';
+import { PreevaluationShellComponent } from './pages/preevaluation/preevaluation-shell.component';
+import { PreevaluationIntroComponent } from './pages/preevaluation/preevaluation-intro.component';
+import { PreevaluationProfileComponent } from './pages/preevaluation/preevaluation-profile.component';
+import { PreevaluationTestComponent } from './pages/preevaluation/preevaluation-test.component';
+import { PreevaluationResultComponent } from './pages/preevaluation/preevaluation-result.component';
+import { PreevaluationCheatingTerminatedComponent } from './pages/preevaluation/preevaluation-cheating-terminated.component';
 import { PaymentComponent } from './pages/payment/payment.component';
 import { CertificateComponent } from './pages/certificate/certificate.component';
 import { FeedbackComponent } from './pages/feedback/feedback.component';
@@ -43,60 +48,74 @@ import { FeedbackFormComponent } from './quiz-feedback/components/feedback/feedb
 
 // Auth guard
 import { guestGuard } from './guards/guest.guard';
-import { adminGuard } from './guards/auth.guard';
+import { adminGuard, authGuard } from './guards/auth.guard';
+import { studentPreevaluationGateGuard } from './guards/student-preevaluation.guard';
+import { UserProfileComponent } from './pages/user-profile/user-profile.component';
 
 // OAuth2 redirect component (inline — Spring sends the browser here after Google login)
 import { Oauth2Redirect } from './user-management/oauth2Redirect/oauth2-redirect';
 
 export const routes: Routes = [
-  { path: '', component: HomeComponent },
+  { path: '', component: HomeComponent, canActivate: [studentPreevaluationGateGuard] },
 
   // Client Courses
-  { path: 'courses', component: ClientCoursesListComponent },
-  { path: 'courses/:id', component: ClientCourseDetailsComponent },
+  { path: 'courses', component: ClientCoursesListComponent, canActivate: [studentPreevaluationGateGuard] },
+  { path: 'courses/:id', component: ClientCourseDetailsComponent, canActivate: [studentPreevaluationGateGuard] },
 
   // Client Events
-  { path: 'events', component: ClientEventsListComponent },
-  { path: 'events/:id', component: ClientEventDetailsComponent },
-  { path: 'events-advanced', component: EventsAdvancedComponent },
+  { path: 'events', component: ClientEventsListComponent, canActivate: [studentPreevaluationGateGuard] },
+  { path: 'events/:id', component: ClientEventDetailsComponent, canActivate: [studentPreevaluationGateGuard] },
+  { path: 'events-advanced', component: EventsAdvancedComponent, canActivate: [studentPreevaluationGateGuard] },
 
   // Client Clubs
-  { path: 'clubs', component: ClientClubsListComponent },
-  { path: 'clubs/:id', component: ClientClubDetailsComponent },
+  { path: 'clubs', component: ClientClubsListComponent, canActivate: [studentPreevaluationGateGuard] },
+  { path: 'clubs/:id', component: ClientClubDetailsComponent, canActivate: [studentPreevaluationGateGuard] },
 
   // Event features (PI)
-  { path: 'statistics', component: EventStatisticsComponent },
-  { path: 'scanner', component: TicketScannerComponent },
+  { path: 'statistics', component: EventStatisticsComponent, canActivate: [studentPreevaluationGateGuard] },
+  { path: 'scanner', component: TicketScannerComponent, canActivate: [studentPreevaluationGateGuard] },
 
   // Cart (CODE2)
-  { path: 'cart', component: CartComponent },
+  { path: 'cart', component: CartComponent, canActivate: [studentPreevaluationGateGuard] },
 
   // Quizzes (CODE3)
-  { path: 'quizzes', component: QuizListComponent },
-  { path: 'quizzes/new', component: QuizFormComponent },
-  { path: 'quizzes/:id', component: QuizDetailComponent },
-  { path: 'quizzes/:id/edit', component: QuizFormComponent },
-  { path: 'quizzes/:id/take', component: TakeQuizComponent },
-  { path: 'attempts/:id/result', component: AttemptResultComponent },
+  { path: 'quizzes', component: QuizListComponent, canActivate: [studentPreevaluationGateGuard] },
+  { path: 'quizzes/new', component: QuizFormComponent, canActivate: [studentPreevaluationGateGuard] },
+  { path: 'quizzes/:id', component: QuizDetailComponent, canActivate: [studentPreevaluationGateGuard] },
+  { path: 'quizzes/:id/edit', component: QuizFormComponent, canActivate: [studentPreevaluationGateGuard] },
+  { path: 'quizzes/:id/take', component: TakeQuizComponent, canActivate: [studentPreevaluationGateGuard] },
+  { path: 'attempts/:id/result', component: AttemptResultComponent, canActivate: [studentPreevaluationGateGuard] },
 
   // Feedbacks (CODE3)
-  { path: 'feedbacks', component: FeedbackListComponent },
-  { path: 'feedbacks/new', component: FeedbackFormComponent },
-  { path: 'feedbacks/:id/edit', component: FeedbackFormComponent },
+  { path: 'feedbacks', component: FeedbackListComponent, canActivate: [studentPreevaluationGateGuard] },
+  { path: 'feedbacks/new', component: FeedbackFormComponent, canActivate: [studentPreevaluationGateGuard] },
+  { path: 'feedbacks/:id/edit', component: FeedbackFormComponent, canActivate: [studentPreevaluationGateGuard] },
 
   // Legacy routes (keeping for backward compatibility)
-  { path: 'courses/manage', component: CourseManagementComponent },
-  { path: 'messenger', component: MessengerComponent },
-  { path: 'preevaluation', component: PreevaluationComponent },
-  { path: 'quiz', component: QuizComponent },
-  { path: 'payment', component: PaymentComponent },
-  { path: 'certificate', component: CertificateComponent },
-  { path: 'feedback', component: FeedbackComponent },
-  { path: 'cv', component: CvComponent },
-  { path: 'job-offers', component: JobOffersComponent },
-  { path: 'my-applications', component: MyApplicationsComponent },
-  { path: 'rate-tutor', component: RateTutorComponent },
-  { path: 'schedule', component: ScheduleComponent },
+  { path: 'courses/manage', component: CourseManagementComponent, canActivate: [studentPreevaluationGateGuard] },
+  { path: 'messenger', component: MessengerComponent, canActivate: [studentPreevaluationGateGuard] },
+  {
+    path: 'preevaluation',
+    component: PreevaluationShellComponent,
+    canActivate: [studentPreevaluationGateGuard, authGuard],
+    children: [
+      { path: '', pathMatch: 'full', redirectTo: 'start' },
+      { path: 'start', component: PreevaluationIntroComponent },
+      { path: 'profile', component: PreevaluationProfileComponent },
+      { path: 'test', component: PreevaluationTestComponent },
+      { path: 'result', component: PreevaluationResultComponent },
+      { path: 'cheating-terminated', component: PreevaluationCheatingTerminatedComponent },
+    ],
+  },
+  { path: 'quiz', component: QuizComponent, canActivate: [studentPreevaluationGateGuard] },
+  { path: 'payment', component: PaymentComponent, canActivate: [studentPreevaluationGateGuard] },
+  { path: 'certificate', component: CertificateComponent, canActivate: [studentPreevaluationGateGuard] },
+  { path: 'feedback', component: FeedbackComponent, canActivate: [studentPreevaluationGateGuard] },
+  { path: 'cv', component: CvComponent, canActivate: [studentPreevaluationGateGuard] },
+  { path: 'job-offers', component: JobOffersComponent, canActivate: [studentPreevaluationGateGuard] },
+  { path: 'my-applications', component: MyApplicationsComponent, canActivate: [studentPreevaluationGateGuard] },
+  { path: 'rate-tutor', component: RateTutorComponent, canActivate: [studentPreevaluationGateGuard] },
+  { path: 'schedule', component: ScheduleComponent, canActivate: [studentPreevaluationGateGuard] },
 
   // Auth module (lazy-loaded) — guest guard prevents access when already logged in
   {
@@ -115,6 +134,12 @@ export const routes: Routes = [
     path: 'admin',
     loadChildren: () => import('./admin/admin.module').then(m => m.AdminModule),
     canActivate: [adminGuard],
+  },
+
+  {
+    path: 'profile',
+    component: UserProfileComponent,
+    canActivate: [studentPreevaluationGateGuard, authGuard],
   },
 
   { path: '**', redirectTo: '' },

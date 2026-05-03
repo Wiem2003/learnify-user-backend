@@ -7,11 +7,11 @@
 
     <div class="profile-header">
       <div class="avatar-wrapper">
-        <img *ngIf="user.avatarUrl"
-             [src]="user.avatarUrl"
+        <img *ngIf="displayAvatar"
+             [src]="displayAvatar"
              class="avatar-img"
              alt="Avatar" />
-        <div *ngIf="!user.avatarUrl" class="avatar-placeholder">
+        <div *ngIf="!displayAvatar" class="avatar-placeholder">
           <i class="ti ti-user"></i>
         </div>
       </div>
