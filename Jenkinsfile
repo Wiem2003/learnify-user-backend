@@ -1,71 +1,76 @@
+// Jenkinsfile — Eureka Server
+// Pipeline CI pour eureka-server selon le guide Sprint 3 DevOps
+
 pipeline {
     agent any
 
-    tools {
-        maven 'Maven'
-        jdk 'Java17'
-    }
-
     environment {
-        IMAGE_NAME = 'wiwi2003/eureka-server:latest'
+        IMAGE_NAME = 'wiwi2003/eureka-server'       // nom de l'image sur Docker Hub
+        IMAGE_TAG = 'latest'
+        DOCKER_CREDS = credentials('docker-hub-credentials') // config Jenkins
     }
 
     stages {
-
-        stage('Checkout') {
+        stage('1 — Checkout') {
             steps {
+                // Récupérer le code source depuis GitHub
                 git branch: 'eureka-only',
-                url: 'https://github.com/Wiem2003/learnify-user-backend.git'
+                    url: 'https://github.com/wissemkarous/learnify-user-backend.git',
+                    credentialsId: 'github-credentials'
+                echo "Code récupéré depuis GitHub — branche eureka-only"
             }
         }
 
-        stage('Build') {
+        stage('2 — Build Maven') {
             steps {
-                sh 'mvn clean compile'
+                sh 'mvn clean package -DskipTests'
+                echo "Build Maven terminé : eureka-server"
             }
         }
 
-        stage('Test') {
+        stage('3 — Tests') {
             steps {
                 sh 'mvn test'
             }
-        }
-
-        stage('Package') {
-            steps {
-                sh 'mvn package -DskipTests'
-            }
-        }
-
-        stage('Docker Build') {
-            steps {
-                sh 'docker build --no-cache -t $IMAGE_NAME .'
-            }
-        }
-
-        stage('Docker Push') {
-            steps {
-                withCredentials([usernamePassword(
-                    credentialsId: 'dockerhub',
-                    usernameVariable: 'DOCKER_USER',
-                    passwordVariable: 'DOCKER_PASS'
-                )]) {
-                    sh '''
-                    docker logout || true
-                    echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
-                    docker push $IMAGE_NAME
-                    '''
+            post {
+                always {
+                    // Publier les résultats de tests dans Jenkins
+                    junit "target/surefire-reports/*.xml"
+                }
+                failure {
+                    error 'Tests échoués — arrêt du pipeline'
                 }
             }
         }
 
-        stage('Deploy Kubernetes') {
+        stage('4 — Build Image Docker') {
             steps {
-                sh '''
-                kubectl rollout restart deployment eureka-server -n learnify
-                kubectl rollout status deployment eureka-server -n learnify
-                '''
+                // Construire l'image Docker depuis le Dockerfile
+                sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
+                echo "Image Docker construite : ${IMAGE_NAME}:${IMAGE_TAG}"
             }
+        }
+
+        stage('5 — Push Docker Hub') {
+            steps {
+                // Se connecter à Docker Hub et pousser l'image
+                sh "echo ${DOCKER_CREDS_PSW} | docker login -u ${DOCKER_CREDS_USR} --password-stdin"
+                sh "docker push ${IMAGE_NAME}:${IMAGE_TAG}"
+                echo "Image publiée sur Docker Hub : ${IMAGE_NAME}:${IMAGE_TAG}"
+            }
+        }
+    } // fin stages
+
+    post {
+        success {
+            echo "Pipeline CI réussi — image ${IMAGE_NAME}:${IMAGE_TAG} disponible sur Docker Hub"
+        }
+        failure {
+            echo "Pipeline CI échoué — vérifier les logs ci-dessus"
+        }
+        always {
+            // Nettoyer pour libérer l'espace disque Jenkins
+            sh "docker rmi ${IMAGE_NAME}:${IMAGE_TAG} || true"
         }
     }
 }
