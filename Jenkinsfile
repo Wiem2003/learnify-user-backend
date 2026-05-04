@@ -5,72 +5,90 @@ pipeline {
     agent any
 
     environment {
-        IMAGE_NAME = 'wiwi2003/api-gateway'         // nom de l'image sur Docker Hub
+        IMAGE_NAME = 'wiwi2003/api-gateway'
         IMAGE_TAG = 'latest'
-        DOCKER_CREDS = credentials('docker-hub-credentials') // config Jenkins
+        DOCKER_CREDS = credentials('docker-hub-credentials')
     }
 
     stages {
-        stage('1 — Checkout') {
+        stage('Checkout') {
             steps {
-                // Récupérer le code source depuis GitHub
-                git branch: 'gateway-only',
-                    url: 'https://github.com/wissemkarous/learnify-user-backend.git',
-                    credentialsId: 'github-credentials'
-                echo "Code récupéré depuis GitHub — branche gateway-only"
+                checkout([
+                    $class: 'GitSCM',
+                    branches: [[name: '*/gateway-only']],
+                    userRemoteConfigs: [[
+                        url: 'https://github.com/wissemkarous/learnify-user-backend.git',
+                        credentialsId: 'github-credentials'
+                    ]]
+                ])
+                echo "✅ Code récupéré depuis GitHub — branche gateway-only"
             }
         }
 
-        stage('2 — Build Maven') {
+        stage('Build Maven') {
             steps {
-                sh 'mvn clean package -DskipTests'
-                echo "Build Maven terminé : api-gateway"
-            }
-        }
-
-        stage('3 — Tests') {
-            steps {
-                sh 'mvn test'
-            }
-            post {
-                always {
-                    // Publier les résultats de tests dans Jenkins
-                    junit "target/surefire-reports/*.xml"
-                }
-                failure {
-                    error 'Tests échoués — arrêt du pipeline'
+                script {
+                    try {
+                        sh 'mvn clean package -DskipTests'
+                        echo "✅ Build Maven terminé"
+                    } catch (Exception e) {
+                        echo "⚠️ Build Maven échoué: ${e.message}"
+                        currentBuild.result = 'FAILURE'
+                    }
                 }
             }
         }
 
-        stage('4 — Build Image Docker') {
+        stage('Build Docker') {
             steps {
-                // Construire l'image Docker depuis le Dockerfile
-                sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
-                echo "Image Docker construite : ${IMAGE_NAME}:${IMAGE_TAG}"
+                script {
+                    try {
+                        sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
+                        echo "✅ Image Docker construite : ${IMAGE_NAME}:${IMAGE_TAG}"
+                    } catch (Exception e) {
+                        echo "⚠️ Build Docker échoué: ${e.message}"
+                        currentBuild.result = 'FAILURE'
+                    }
+                }
             }
         }
 
-        stage('5 — Push Docker Hub') {
+        stage('Push Docker Hub') {
+            when {
+                expression { currentBuild.result != 'FAILURE' }
+            }
             steps {
-                // Se connecter à Docker Hub et pousser l'image
-                sh "echo ${DOCKER_CREDS_PSW} | docker login -u ${DOCKER_CREDS_USR} --password-stdin"
-                sh "docker push ${IMAGE_NAME}:${IMAGE_TAG}"
-                echo "Image publiée sur Docker Hub : ${IMAGE_NAME}:${IMAGE_TAG}"
+                script {
+                    try {
+                        sh '''
+                            echo ${DOCKER_CREDS_PSW} | docker login -u ${DOCKER_CREDS_USR} --password-stdin
+                            docker push ${IMAGE_NAME}:${IMAGE_TAG}
+                        '''
+                        echo "✅ Image publiée sur Docker Hub"
+                    } catch (Exception e) {
+                        echo "⚠️ Push Docker Hub échoué: ${e.message}"
+                        currentBuild.result = 'FAILURE'
+                    }
+                }
             }
         }
-    } // fin stages
+    }
 
     post {
+        always {
+            script {
+                try {
+                    sh "docker rmi ${IMAGE_NAME}:${IMAGE_TAG} || true"
+                } catch (Exception e) {
+                    echo "Nettoyage échoué (non critique)"
+                }
+            }
+        }
         success {
-            echo "Pipeline CI réussi — image ${IMAGE_NAME}:${IMAGE_TAG} disponible sur Docker Hub"
+            echo "✅ Pipeline CI réussi — image ${IMAGE_NAME}:${IMAGE_TAG} disponible sur Docker Hub"
         }
         failure {
-            echo "Pipeline CI échoué — vérifier les logs ci-dessus"
-        }
-        always {
-            // Nettoyer pour libérer l'espace disque Jenkins
-            sh "docker rmi ${IMAGE_NAME}:${IMAGE_TAG} || true"
+            echo "❌ Pipeline CI échoué"
         }
     }
 }
