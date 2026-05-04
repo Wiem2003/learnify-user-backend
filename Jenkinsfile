@@ -7,47 +7,39 @@ pipeline {
     environment {
         IMAGE_NAME = 'wiwi2003/user-service'
         IMAGE_TAG = 'latest'
-        DOCKER_CREDS = credentials('docker-hub-credentials')
     }
 
     stages {
-        stage('Checkout') {
-            steps {
-                checkout([
-                    $class: 'GitSCM',
-                    branches: [[name: '*/user_final_user']],
-                    userRemoteConfigs: [[
-                        url: 'https://github.com/wissemkarous/learnify-user-backend.git',
-                        credentialsId: 'github-credentials'
-                    ]]
-                ])
-                echo "✅ Code récupéré depuis GitHub — branche user_final_user"
-            }
-        }
-
         stage('Build Maven') {
             steps {
                 script {
                     try {
+                        echo "🔨 Démarrage du build Maven..."
                         sh 'mvn clean package -DskipTests'
                         echo "✅ Build Maven terminé"
                     } catch (Exception e) {
-                        echo "⚠️ Build Maven échoué: ${e.message}"
+                        echo "❌ Build Maven échoué: ${e.message}"
                         currentBuild.result = 'FAILURE'
+                        error("Build Maven échoué")
                     }
                 }
             }
         }
 
         stage('Build Docker') {
+            when {
+                expression { currentBuild.result != 'FAILURE' }
+            }
             steps {
                 script {
                     try {
+                        echo "🐳 Construction de l'image Docker..."
                         sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
                         echo "✅ Image Docker construite : ${IMAGE_NAME}:${IMAGE_TAG}"
                     } catch (Exception e) {
-                        echo "⚠️ Build Docker échoué: ${e.message}"
+                        echo "❌ Build Docker échoué: ${e.message}"
                         currentBuild.result = 'FAILURE'
+                        error("Build Docker échoué")
                     }
                 }
             }
@@ -60,14 +52,19 @@ pipeline {
             steps {
                 script {
                     try {
-                        sh '''
-                            echo ${DOCKER_CREDS_PSW} | docker login -u ${DOCKER_CREDS_USR} --password-stdin
-                            docker push ${IMAGE_NAME}:${IMAGE_TAG}
-                        '''
-                        echo "✅ Image publiée sur Docker Hub"
+                        echo "📤 Connexion à Docker Hub..."
+                        withCredentials([usernamePassword(credentialsId: 'docker-hub-credentials', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                            sh '''
+                                echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
+                                docker push ${IMAGE_NAME}:${IMAGE_TAG}
+                                docker logout
+                            '''
+                        }
+                        echo "✅ Image publiée sur Docker Hub : ${IMAGE_NAME}:${IMAGE_TAG}"
                     } catch (Exception e) {
-                        echo "⚠️ Push Docker Hub échoué: ${e.message}"
+                        echo "❌ Push Docker Hub échoué: ${e.message}"
                         currentBuild.result = 'FAILURE'
+                        error("Push Docker Hub échoué")
                     }
                 }
             }
@@ -79,8 +76,9 @@ pipeline {
             script {
                 try {
                     sh "docker rmi ${IMAGE_NAME}:${IMAGE_TAG} || true"
+                    echo "🧹 Nettoyage terminé"
                 } catch (Exception e) {
-                    echo "Nettoyage échoué (non critique)"
+                    echo "⚠️ Nettoyage échoué (non critique)"
                 }
             }
         }
@@ -88,7 +86,7 @@ pipeline {
             echo "✅ Pipeline CI réussi — image ${IMAGE_NAME}:${IMAGE_TAG} disponible sur Docker Hub"
         }
         failure {
-            echo "❌ Pipeline CI échoué"
+            echo "❌ Pipeline CI échoué — vérifier les logs ci-dessus"
         }
     }
 }
