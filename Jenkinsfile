@@ -5,50 +5,76 @@ pipeline {
     agent any
 
     environment {
-        IMAGE_NAME = 'wiwi2003/learnify-frontend'   // nom de l'image sur Docker Hub
+        IMAGE_NAME = 'wiwi2003/learnify-frontend'
         IMAGE_TAG = 'latest'
-        DOCKER_CREDS = credentials('docker-hub-credentials') // config Jenkins
+        DOCKER_CREDS = credentials('docker-hub-credentials')
     }
 
     stages {
-        stage('1 — Checkout') {
+        stage('Checkout') {
             steps {
-                // Récupérer le code source depuis GitHub
-                git branch: 'front_fonctionnel',
-                    url: 'https://github.com/wissemkarous/learnify-user-backend.git',
-                    credentialsId: 'github-credentials'
-                echo "Code récupéré depuis GitHub — branche front_fonctionnel"
+                checkout([
+                    $class: 'GitSCM',
+                    branches: [[name: '*/front_fonctionnel']],
+                    userRemoteConfigs: [[
+                        url: 'https://github.com/wissemkarous/learnify-user-backend.git',
+                        credentialsId: 'github-credentials'
+                    ]]
+                ])
+                echo "✅ Code récupéré depuis GitHub — branche front_fonctionnel"
             }
         }
 
-        stage('2 — Build Docker Image') {
+        stage('Build Docker') {
             steps {
-                // Construire l'image Docker (le build Angular se fait dans le Dockerfile)
-                sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
-                echo "Image Docker construite : ${IMAGE_NAME}:${IMAGE_TAG}"
+                script {
+                    try {
+                        sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
+                        echo "✅ Image Docker construite : ${IMAGE_NAME}:${IMAGE_TAG}"
+                    } catch (Exception e) {
+                        echo "⚠️ Build Docker échoué: ${e.message}"
+                        currentBuild.result = 'FAILURE'
+                    }
+                }
             }
         }
 
-        stage('3 — Push Docker Hub') {
+        stage('Push Docker Hub') {
+            when {
+                expression { currentBuild.result != 'FAILURE' }
+            }
             steps {
-                // Se connecter à Docker Hub et pousser l'image
-                sh "echo ${DOCKER_CREDS_PSW} | docker login -u ${DOCKER_CREDS_USR} --password-stdin"
-                sh "docker push ${IMAGE_NAME}:${IMAGE_TAG}"
-                echo "Image publiée sur Docker Hub : ${IMAGE_NAME}:${IMAGE_TAG}"
+                script {
+                    try {
+                        sh '''
+                            echo ${DOCKER_CREDS_PSW} | docker login -u ${DOCKER_CREDS_USR} --password-stdin
+                            docker push ${IMAGE_NAME}:${IMAGE_TAG}
+                        '''
+                        echo "✅ Image publiée sur Docker Hub"
+                    } catch (Exception e) {
+                        echo "⚠️ Push Docker Hub échoué: ${e.message}"
+                        currentBuild.result = 'FAILURE'
+                    }
+                }
             }
         }
-    } // fin stages
+    }
 
     post {
+        always {
+            script {
+                try {
+                    sh "docker rmi ${IMAGE_NAME}:${IMAGE_TAG} || true"
+                } catch (Exception e) {
+                    echo "Nettoyage échoué (non critique)"
+                }
+            }
+        }
         success {
-            echo "Pipeline CI réussi — image ${IMAGE_NAME}:${IMAGE_TAG} disponible sur Docker Hub"
+            echo "✅ Pipeline CI réussi — image ${IMAGE_NAME}:${IMAGE_TAG} disponible sur Docker Hub"
         }
         failure {
-            echo "Pipeline CI échoué — vérifier les logs ci-dessus"
-        }
-        always {
-            // Nettoyer pour libérer l'espace disque Jenkins
-            sh "docker rmi ${IMAGE_NAME}:${IMAGE_TAG} || true"
+            echo "❌ Pipeline CI échoué"
         }
     }
 }
