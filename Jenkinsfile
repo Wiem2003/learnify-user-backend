@@ -92,7 +92,7 @@ pipeline {
                         stage('Build Payment') {
                             steps {
                                 echo '🔨 Building Payment Service...'
-                                dir('integrated/payment-service') {
+                                dir('payment-service') {
                                     sh 'mvn clean compile -DskipTests'
                                 }
                             }
@@ -104,7 +104,7 @@ pipeline {
                             }
                             steps {
                                 echo '🧪 Testing Payment Service...'
-                                dir('integrated/payment-service') {
+                                dir('payment-service') {
                                     sh 'mvn test'
                                 }
                             }
@@ -113,7 +113,7 @@ pipeline {
                         stage('Package Payment') {
                             steps {
                                 echo '📦 Packaging Payment Service...'
-                                dir('integrated/payment-service') {
+                                dir('payment-service') {
                                     sh 'mvn package -DskipTests'
                                 }
                             }
@@ -122,7 +122,7 @@ pipeline {
                         stage('Docker Payment') {
                             steps {
                                 echo '🐳 Building Payment Docker image...'
-                                dir('integrated/payment-service') {
+                                dir('payment-service') {
                                     script {
                                         docker.build("payment-service:${BUILD_NUMBER}")
                                     }
@@ -140,7 +140,7 @@ pipeline {
                         stage('Build Certificate') {
                             steps {
                                 echo '🔨 Building Certificate Service...'
-                                dir('integrated/certificate-service') {
+                                dir('certificate-service') {
                                     sh 'mvn clean compile -DskipTests'
                                 }
                             }
@@ -152,7 +152,7 @@ pipeline {
                             }
                             steps {
                                 echo '🧪 Testing Certificate Service...'
-                                dir('integrated/certificate-service') {
+                                dir('certificate-service') {
                                     sh 'mvn test'
                                 }
                             }
@@ -161,7 +161,7 @@ pipeline {
                         stage('Package Certificate') {
                             steps {
                                 echo '📦 Packaging Certificate Service...'
-                                dir('integrated/certificate-service') {
+                                dir('certificate-service') {
                                     sh 'mvn package -DskipTests'
                                 }
                             }
@@ -170,7 +170,7 @@ pipeline {
                         stage('Docker Certificate') {
                             steps {
                                 echo '🐳 Building Certificate Docker image...'
-                                dir('integrated/certificate-service') {
+                                dir('certificate-service') {
                                     script {
                                         docker.build("certificate-service:${BUILD_NUMBER}")
                                     }
