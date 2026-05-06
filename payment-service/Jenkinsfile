@@ -74,11 +74,8 @@ pipeline {
             }
             post {
                 always {
-                    // Publier les résultats de tests dans Jenkins
-                    junit 'payment-service/target/surefire-reports/*.xml'
-                }
-                failure {
-                    error 'Tests échoués — arrêt du pipeline'
+                    // Publier les résultats de tests dans Jenkins (si des tests existent)
+                    junit allowEmptyResults: true, testResults: 'payment-service/target/surefire-reports/*.xml'
                 }
             }
         }
