@@ -29,7 +29,25 @@ pipeline {
         stage('Checkout') {
             steps {
                 echo '📥 Checking out code from repository...'
-                checkout scm
+                
+                // Configure Git for large repositories
+                sh '''
+                    git config --global http.postBuffer 524288000
+                    git config --global http.lowSpeedLimit 0
+                    git config --global http.lowSpeedTime 999999
+                    git config --global core.compression 0
+                '''
+                
+                // Shallow clone to reduce download size
+                checkout([
+                    $class: 'GitSCM',
+                    branches: scm.branches,
+                    extensions: [
+                        [$class: 'CloneOption', depth: 1, noTags: false, shallow: true, timeout: 60],
+                        [$class: 'CheckoutOption', timeout: 60]
+                    ],
+                    userRemoteConfigs: scm.userRemoteConfigs
+                ])
                 
                 script {
                     // Get Git commit info

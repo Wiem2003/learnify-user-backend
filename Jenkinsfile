@@ -35,7 +35,26 @@ pipeline {
         stage('Checkout') {
             steps {
                 echo '📥 Checking out code...'
-                checkout scm
+                
+                // Configure Git for large repositories
+                sh '''
+                    git config --global http.postBuffer 524288000
+                    git config --global http.lowSpeedLimit 0
+                    git config --global http.lowSpeedTime 999999
+                    git config --global core.compression 0
+                '''
+                
+                // Shallow clone to reduce download size
+                checkout([
+                    $class: 'GitSCM',
+                    branches: scm.branches,
+                    extensions: [
+                        [$class: 'CloneOption', depth: 1, noTags: false, shallow: true, timeout: 60],
+                        [$class: 'CheckoutOption', timeout: 60]
+                    ],
+                    userRemoteConfigs: scm.userRemoteConfigs
+                ])
+                
                 script {
                     env.GIT_COMMIT_SHORT = sh(script: "git rev-parse --short HEAD", returnStdout: true).trim()
                     env.GIT_BRANCH = sh(script: "git rev-parse --abbrev-ref HEAD", returnStdout: true).trim()
