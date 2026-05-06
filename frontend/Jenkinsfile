@@ -3,7 +3,8 @@ pipeline {
 
     environment {
         IMAGE_NAME = "rahmouta/frontend-service"
-        IMAGE_TAG = "latest"
+        IMAGE_TAG = "${BUILD_NUMBER}"   // 👈 version dynamique
+        DOCKER_BUILDKIT = '1'          // 👈 active BuildKit
     }
 
     stages {
@@ -17,19 +18,24 @@ pipeline {
 
         stage('Docker Build') {
             steps {
-                sh 'docker build -t $IMAGE_NAME:$IMAGE_TAG frontend'
+                sh '''
+                    docker build -t $IMAGE_NAME:$IMAGE_TAG frontend
+                '''
             }
         }
 
-        stage('Docker Push') {
+        stage('Docker Login & Push') {
             steps {
-                withCredentials([usernamePassword(credentialsId: 'Docker-ID',
+                withCredentials([usernamePassword(
+                    credentialsId: 'Docker-ID',
                     usernameVariable: 'USER',
-                    passwordVariable: 'PASS')]) {
+                    passwordVariable: 'PASS'
+                )]) {
 
                     sh '''
                         echo $PASS | docker login -u $USER --password-stdin
                         docker push $IMAGE_NAME:$IMAGE_TAG
+                        docker logout
                     '''
                 }
             }
@@ -38,7 +44,7 @@ pipeline {
 
     post {
         always {
-            sh 'docker system prune -f || true'
+            sh 'docker system prune -af || true'
         }
     }
 }
