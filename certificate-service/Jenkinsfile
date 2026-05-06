@@ -58,7 +58,7 @@ pipeline {
         stage('2 — Build Maven') {
             steps {
                 echo '🔨 Building Certificate Service with Maven...'
-                dir('integrated/certificate-service') {
+                dir('certificate-service') {
                     sh 'mvn clean compile -DskipTests'
                     echo "✅ Build Maven terminé : certificate-service"
                 }
@@ -68,17 +68,14 @@ pipeline {
         stage('3 — Tests') {
             steps {
                 echo '🧪 Running tests for Certificate Service...'
-                dir('integrated/certificate-service') {
+                dir('certificate-service') {
                     sh 'mvn test'
                 }
             }
             post {
                 always {
-                    // Publier les résultats de tests dans Jenkins
-                    junit 'integrated/certificate-service/target/surefire-reports/*.xml'
-                }
-                failure {
-                    error 'Tests échoués — arrêt du pipeline'
+                    // Publier les résultats de tests dans Jenkins (si des tests existent)
+                    junit allowEmptyResults: true, testResults: 'certificate-service/target/surefire-reports/*.xml'
                 }
             }
         }
@@ -86,7 +83,7 @@ pipeline {
         stage('4 — Package') {
             steps {
                 echo '📦 Packaging Certificate Service...'
-                dir('integrated/certificate-service') {
+                dir('certificate-service') {
                     sh 'mvn package -DskipTests'
                     echo "✅ Package créé : certificate-service/target/*.jar"
                 }
@@ -96,7 +93,7 @@ pipeline {
         stage('5 — Build Docker Image') {
             steps {
                 echo '🐳 Building Docker image for Certificate Service...'
-                dir('integrated/certificate-service') {
+                dir('certificate-service') {
                     script {
                         // Build avec 2 tags : latest et numéro de build
                         sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
@@ -112,9 +109,12 @@ pipeline {
             steps {
                 echo '📤 Pushing Certificate Service image to Docker Hub...'
                 script {
-                    docker.withRegistry("https://${DOCKER_REGISTRY}", "${DOCKER_CREDS_ID}") {
-                        sh "docker push ${IMAGE_NAME}:${IMAGE_TAG}"
-                        sh "docker push ${IMAGE_NAME}:${BUILD_TAG}"
+                    withCredentials([usernamePassword(credentialsId: "${DOCKER_CREDS_ID}", usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                        sh '''
+                            echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+                            docker push ${IMAGE_NAME}:${IMAGE_TAG}
+                            docker push ${IMAGE_NAME}:${BUILD_TAG}
+                        '''
                         echo "✅ Image publiée sur Docker Hub : ${IMAGE_NAME}:${IMAGE_TAG}"
                         echo "✅ Image publiée sur Docker Hub : ${IMAGE_NAME}:${BUILD_TAG}"
                     }
