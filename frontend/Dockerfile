@@ -1,19 +1,12 @@
 FROM node:20 AS build
-
 WORKDIR /app
-
 COPY package.json package-lock.json ./
-
-# FAST FIX
 RUN npm install
-
 COPY . .
-
 RUN npm run build
 
 FROM nginx:alpine
-
-COPY --from=build /app/dist /usr/share/nginx/html
-
+# Fix: use the actual Angular output path (check angular.json for your project name)
+COPY --from=build /app/dist/learnhub/browser /usr/share/nginx/html
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
