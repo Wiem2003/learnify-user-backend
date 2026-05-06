@@ -1,0 +1,153 @@
+<app-navbar></app-navbar>
+
+<div class="kids-game-container" [style.background]="gameStarted ? getCategoryGradient() : ''">
+  
+  <!-- Category Selection Screen -->
+  <div class="category-screen" *ngIf="!gameStarted && !loading && !showGamesList">
+    <div class="welcome-section">
+      <h1 class="welcome-title">
+        <span class="wave">👋</span> Welcome to Kids Zone!
+      </h1>
+      <p class="welcome-subtitle">Choose a fun category to start learning</p>
+    </div>
+
+    <div class="categories-grid">
+      <div class="category-card" 
+           *ngFor="let category of categories"
+           (click)="selectCategory(category.id)"
+           [style.background]="category.gradient">
+        <div class="category-icon">{{category.icon}}</div>
+        <h3 class="category-name">{{category.name}}</h3>
+        <p class="category-description">{{category.description}}</p>
+        <div class="play-button">
+          <span>▶</span> View Games
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Games List Screen -->
+  <div class="games-list-screen" *ngIf="showGamesList && !gameStarted && !loading">
+    <div class="games-header">
+      <button class="back-button" (click)="backToCategories()">
+        <span>←</span> Back to Categories
+      </button>
+      <h1 class="games-title">
+        {{selectedCategory | titlecase}} Games
+      </h1>
+    </div>
+
+    <div class="games-grid" *ngIf="availableGames.length > 0">
+      <div class="game-card" 
+           *ngFor="let game of availableGames"
+           (click)="selectGame(game)">
+        <div class="game-icon">🎮</div>
+        <h3 class="game-title">{{game.title}}</h3>
+        <p class="game-description">{{game.description}}</p>
+        <div class="game-stats">
+          <span class="question-count">{{game.questionCount || 0}} questions</span>
+        </div>
+        <div class="play-button">
+          <span>▶</span> Play Now
+        </div>
+      </div>
+    </div>
+
+    <div class="no-games" *ngIf="availableGames.length === 0">
+      <div class="no-games-icon">📝</div>
+      <h3>No Games Available</h3>
+      <p>There are no games in this category yet.</p>
+      <button class="btn-secondary" (click)="backToCategories()">
+        Choose Another Category
+      </button>
+    </div>
+  </div>
+
+  <!-- Loading Screen -->
+  <div class="loading-screen" *ngIf="loading">
+    <div class="loading-content">
+      <div class="loading-spinner"></div>
+      <p class="loading-text">Loading your game...</p>
+    </div>
+  </div>
+
+  <!-- Game Screen -->
+  <div class="game-screen" *ngIf="gameStarted && !gameFinished && !loading">
+    <!-- Header -->
+    <div class="game-header">
+      <button class="back-button" (click)="backToGamesList()">
+        <span>←</span>
+      </button>
+      <div class="score-display">
+        <span class="star-icon">⭐</span>
+        <span class="score-text">{{score}}/{{questions.length}}</span>
+      </div>
+    </div>
+
+    <!-- Progress Bar -->
+    <div class="progress-container">
+      <div class="progress-bar" [style.width.%]="progressPercentage"></div>
+    </div>
+
+    <!-- Question Card -->
+    <div class="question-card" [class.shake]="showErrorShake">
+      <div class="question-emoji">{{currentQuestion?.image}}</div>
+      <h2 class="question-text">What is this?</h2>
+    </div>
+
+    <!-- Answer Options -->
+    <div class="answers-grid">
+      <button class="answer-button"
+              *ngFor="let answer of shuffledAnswers"
+              (click)="selectAnswer(answer)"
+              [class.selected]="selectedAnswer === answer"
+              [class.correct]="showFeedback && answer === currentQuestion?.word"
+              [class.wrong]="showFeedback && selectedAnswer === answer && answer !== currentQuestion?.word"
+              [disabled]="showFeedback">
+        {{answer}}
+      </button>
+    </div>
+
+    <!-- Feedback Message -->
+    <div class="feedback-message" *ngIf="showFeedback">
+      <div class="feedback-content" [class.correct]="isCorrect" [class.wrong]="!isCorrect">
+        <span class="feedback-icon">{{isCorrect ? '🎉' : '😅'}}</span>
+        <span class="feedback-text">{{isCorrect ? 'Amazing!' : 'Try again!'}}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Results Screen -->
+  <div class="results-screen" *ngIf="gameFinished">
+    <div class="results-content">
+      <div class="trophy-icon">🏆</div>
+      <h1 class="results-title">Great Job!</h1>
+      <p class="results-score">You got {{score}} out of {{questions.length}} correct!</p>
+      
+      <div class="stars-display">
+        <span class="star" *ngFor="let star of [1,2,3]" [class.earned]="star <= starsEarned">
+          ⭐
+        </span>
+      </div>
+
+      <div class="results-buttons">
+        <button class="btn-primary" (click)="playAgain()">
+          <span>🔄</span> Play Again
+        </button>
+        <button class="btn-secondary" (click)="goHome()">
+          <span>🏠</span> Go Home
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Star Explosion Animation -->
+  <div class="star-explosion" *ngIf="showStarExplosion">
+    <div class="star-particle" *ngFor="let i of [1,2,3,4,5,6,7,8]">⭐</div>
+  </div>
+
+  <!-- Confetti Animation -->
+  <div class="confetti-container" *ngIf="showConfetti">
+    <div class="confetti" *ngFor="let i of [1,2,3,4,5,6,7,8,9,10]"></div>
+  </div>
+</div>
