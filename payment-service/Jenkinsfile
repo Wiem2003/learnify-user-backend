@@ -109,9 +109,12 @@ pipeline {
             steps {
                 echo '📤 Pushing Payment Service image to Docker Hub...'
                 script {
-                    docker.withRegistry("https://${DOCKER_REGISTRY}", "${DOCKER_CREDS_ID}") {
-                        sh "docker push ${IMAGE_NAME}:${IMAGE_TAG}"
-                        sh "docker push ${IMAGE_NAME}:${BUILD_TAG}"
+                    withCredentials([usernamePassword(credentialsId: "${DOCKER_CREDS_ID}", usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                        sh '''
+                            echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+                            docker push ${IMAGE_NAME}:${IMAGE_TAG}
+                            docker push ${IMAGE_NAME}:${BUILD_TAG}
+                        '''
                         echo "✅ Image publiée sur Docker Hub : ${IMAGE_NAME}:${IMAGE_TAG}"
                         echo "✅ Image publiée sur Docker Hub : ${IMAGE_NAME}:${BUILD_TAG}"
                     }
