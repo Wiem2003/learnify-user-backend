@@ -1,0 +1,376 @@
+pipeline {
+    agent any
+    
+    tools {
+        maven 'Maven-3.9'
+        jdk 'JDK-17'
+    }
+    
+    environment {
+        // Docker Registry
+        DOCKER_REGISTRY = 'docker.io'
+        DOCKER_CREDENTIALS_ID = 'dockerhub-credentials'
+        IMAGE_NAME = 'certificate-service'
+        IMAGE_TAG = "${BUILD_NUMBER}"
+        
+        // SonarQube
+        SONAR_HOST_URL = 'http://localhost:9000'
+        SONAR_PROJECT_KEY = 'learnify-certificate-service'
+        
+        // Application
+        SERVICE_NAME = 'certificate-service'
+        SERVICE_PORT = '8083'
+        
+        // Paths
+        SERVICE_PATH = 'integrated/certificate-service'
+    }
+    
+    stages {
+        stage('Checkout') {
+            steps {
+                echo '📥 Checking out code from repository...'
+                checkout scm
+                
+                script {
+                    // Get Git commit info
+                    env.GIT_COMMIT_SHORT = sh(
+                        script: "git rev-parse --short HEAD",
+                        returnStdout: true
+                    ).trim()
+                    env.GIT_BRANCH = sh(
+                        script: "git rev-parse --abbrev-ref HEAD",
+                        returnStdout: true
+                    ).trim()
+                }
+                
+                echo "✅ Checked out branch: ${env.GIT_BRANCH}"
+                echo "✅ Commit: ${env.GIT_COMMIT_SHORT}"
+            }
+        }
+        
+        stage('Build') {
+            steps {
+                echo '🔨 Building Certificate Service...'
+                dir("${SERVICE_PATH}") {
+                    sh '''
+                        mvn clean compile -DskipTests
+                    '''
+                }
+                echo '✅ Build completed successfully'
+            }
+        }
+        
+        stage('Unit Tests') {
+            steps {
+                echo '🧪 Running unit tests...'
+                dir("${SERVICE_PATH}") {
+                    sh '''
+                        mvn test
+                    '''
+                }
+            }
+            post {
+                always {
+                    // Publish test results
+                    junit allowEmptyResults: true, testResults: "${SERVICE_PATH}/target/surefire-reports/*.xml"
+                    
+                    // Publish test coverage
+                    jacoco(
+                        execPattern: "${SERVICE_PATH}/target/jacoco.exec",
+                        classPattern: "${SERVICE_PATH}/target/classes",
+                        sourcePattern: "${SERVICE_PATH}/src/main/java"
+                    )
+                }
+            }
+        }
+        
+        stage('Code Quality Analysis') {
+            steps {
+                echo '📊 Running SonarQube analysis...'
+                dir("${SERVICE_PATH}") {
+                    withSonarQubeEnv('SonarQube') {
+                        sh '''
+                            mvn sonar:sonar \
+                                -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
+                                -Dsonar.projectName="Certificate Service" \
+                                -Dsonar.java.binaries=target/classes
+                        '''
+                    }
+                }
+            }
+        }
+        
+        stage('Quality Gate') {
+            steps {
+                echo '🚦 Waiting for Quality Gate...'
+                timeout(time: 5, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
+                }
+                echo '✅ Quality Gate passed'
+            }
+        }
+        
+        stage('Package') {
+            steps {
+                echo '📦 Packaging application...'
+                dir("${SERVICE_PATH}") {
+                    sh '''
+                        mvn package -DskipTests
+                    '''
+                }
+                echo '✅ Application packaged successfully'
+            }
+            post {
+                success {
+                    archiveArtifacts artifacts: "${SERVICE_PATH}/target/*.jar", fingerprint: true
+                }
+            }
+        }
+        
+        stage('Security Scan') {
+            parallel {
+                stage('Dependency Check') {
+                    steps {
+                        echo '🔒 Running OWASP Dependency Check...'
+                        dir("${SERVICE_PATH}") {
+                            sh '''
+                                mvn org.owasp:dependency-check-maven:check
+                            '''
+                        }
+                    }
+                    post {
+                        always {
+                            dependencyCheckPublisher pattern: "${SERVICE_PATH}/target/dependency-check-report.xml"
+                        }
+                    }
+                }
+                
+                stage('Trivy Scan') {
+                    steps {
+                        echo '🔍 Scanning for vulnerabilities with Trivy...'
+                        dir("${SERVICE_PATH}") {
+                            sh '''
+                                trivy fs --severity HIGH,CRITICAL --format json --output trivy-report.json .
+                            '''
+                        }
+                    }
+                }
+            }
+        }
+        
+        stage('Build Docker Image') {
+            steps {
+                echo '🐳 Building Docker image...'
+                dir("${SERVICE_PATH}") {
+                    script {
+                        dockerImage = docker.build("${IMAGE_NAME}:${IMAGE_TAG}")
+                        docker.build("${IMAGE_NAME}:latest")
+                    }
+                }
+                echo "✅ Docker image built: ${IMAGE_NAME}:${IMAGE_TAG}"
+            }
+        }
+        
+        stage('Scan Docker Image') {
+            steps {
+                echo '🔍 Scanning Docker image for vulnerabilities...'
+                sh """
+                    trivy image --severity HIGH,CRITICAL ${IMAGE_NAME}:${IMAGE_TAG}
+                """
+            }
+        }
+        
+        stage('Push to Registry') {
+            when {
+                anyOf {
+                    branch 'main'
+                    branch 'master'
+                    branch 'develop'
+                    branch 'certificate'
+                    branch 'payment'
+                }
+            }
+            steps {
+                echo '📤 Pushing Docker image to registry...'
+                script {
+                    docker.withRegistry("https://${DOCKER_REGISTRY}", "${DOCKER_CREDENTIALS_ID}") {
+                        dockerImage.push("${IMAGE_TAG}")
+                        dockerImage.push("latest")
+                        
+                        // Tag with git commit
+                        dockerImage.push("${env.GIT_COMMIT_SHORT}")
+                        
+                        // Tag with branch name
+                        dockerImage.push("${env.GIT_BRANCH}")
+                    }
+                }
+                echo "✅ Image pushed: ${DOCKER_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}"
+            }
+        }
+        
+        stage('Deploy to Dev') {
+            when {
+                branch 'develop'
+            }
+            steps {
+                echo '🚀 Deploying to Development environment...'
+                script {
+                    // Using docker-compose
+                    sh """
+                        docker-compose -f docker-compose.dev.yml up -d certificate-service
+                    """
+                    
+                    // Or using kubectl for Kubernetes
+                    // sh """
+                    //     kubectl set image deployment/certificate-service \
+                    //         certificate-service=${DOCKER_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG} \
+                    //         -n dev
+                    //     kubectl rollout status deployment/certificate-service -n dev
+                    // """
+                }
+                echo '✅ Deployed to Development'
+            }
+        }
+        
+        stage('Deploy to Staging') {
+            when {
+                anyOf {
+                    branch 'certificate'
+                    branch 'payment'
+                }
+            }
+            steps {
+                echo '🚀 Deploying to Staging environment...'
+                script {
+                    sh """
+                        docker-compose -f docker-compose.staging.yml up -d certificate-service
+                    """
+                }
+                echo '✅ Deployed to Staging'
+            }
+        }
+        
+        stage('Integration Tests') {
+            when {
+                anyOf {
+                    branch 'develop'
+                    branch 'certificate'
+                    branch 'payment'
+                }
+            }
+            steps {
+                echo '🧪 Running integration tests...'
+                dir("${SERVICE_PATH}") {
+                    sh '''
+                        mvn verify -Pintegration-tests
+                    '''
+                }
+            }
+        }
+        
+        stage('Smoke Tests') {
+            when {
+                anyOf {
+                    branch 'develop'
+                    branch 'certificate'
+                    branch 'payment'
+                }
+            }
+            steps {
+                echo '💨 Running smoke tests...'
+                script {
+                    // Wait for service to be ready
+                    sh """
+                        timeout 60 bash -c 'until curl -f http://localhost:${SERVICE_PORT}/actuator/health; do sleep 2; done'
+                    """
+                    
+                    // Run smoke tests
+                    sh """
+                        curl -f http://localhost:${SERVICE_PORT}/actuator/health || exit 1
+                        curl -f http://localhost:${SERVICE_PORT}/actuator/info || exit 1
+                    """
+                }
+                echo '✅ Smoke tests passed'
+            }
+        }
+        
+        stage('Deploy to Production') {
+            when {
+                anyOf {
+                    branch 'main'
+                    branch 'master'
+                }
+            }
+            steps {
+                echo '⚠️  Requesting approval for Production deployment...'
+                input message: 'Deploy to Production?', ok: 'Deploy'
+                
+                echo '🚀 Deploying to Production environment...'
+                script {
+                    sh """
+                        docker-compose -f docker-compose.prod.yml up -d certificate-service
+                    """
+                    
+                    // Or for Kubernetes
+                    // sh """
+                    //     kubectl set image deployment/certificate-service \
+                    //         certificate-service=${DOCKER_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG} \
+                    //         -n production
+                    //     kubectl rollout status deployment/certificate-service -n production
+                    // """
+                }
+                echo '✅ Deployed to Production'
+            }
+        }
+    }
+    
+    post {
+        always {
+            echo '🧹 Cleaning up workspace...'
+            cleanWs()
+        }
+        
+        success {
+            echo '✅ Pipeline completed successfully!'
+            
+            // Send notification
+            emailext(
+                subject: "✅ SUCCESS: Certificate Service Build #${BUILD_NUMBER}",
+                body: """
+                    <h2>Build Successful</h2>
+                    <p><strong>Project:</strong> ${env.JOB_NAME}</p>
+                    <p><strong>Build Number:</strong> ${BUILD_NUMBER}</p>
+                    <p><strong>Branch:</strong> ${env.GIT_BRANCH}</p>
+                    <p><strong>Commit:</strong> ${env.GIT_COMMIT_SHORT}</p>
+                    <p><strong>Docker Image:</strong> ${IMAGE_NAME}:${IMAGE_TAG}</p>
+                    <p><a href="${BUILD_URL}">View Build</a></p>
+                """,
+                to: 'team@learnify.com',
+                mimeType: 'text/html'
+            )
+        }
+        
+        failure {
+            echo '❌ Pipeline failed!'
+            
+            // Send notification
+            emailext(
+                subject: "❌ FAILURE: Certificate Service Build #${BUILD_NUMBER}",
+                body: """
+                    <h2>Build Failed</h2>
+                    <p><strong>Project:</strong> ${env.JOB_NAME}</p>
+                    <p><strong>Build Number:</strong> ${BUILD_NUMBER}</p>
+                    <p><strong>Branch:</strong> ${env.GIT_BRANCH}</p>
+                    <p><strong>Commit:</strong> ${env.GIT_COMMIT_SHORT}</p>
+                    <p><a href="${BUILD_URL}console">View Console Output</a></p>
+                """,
+                to: 'team@learnify.com',
+                mimeType: 'text/html'
+            )
+        }
+        
+        unstable {
+            echo '⚠️  Pipeline is unstable'
+        }
+    }
+}
