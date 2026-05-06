@@ -81,7 +81,7 @@ pipeline {
                     -Dsonar.sources=payment-service/src/main/java \
                     -Dsonar.java.binaries=payment-service/target/classes \
                     -Dsonar.token=${SONAR_TOKEN} \
-                    -Dsonar.host.url=http://192.168.106.80:9000
+                    -Dsonar.host.url=http://localhost:9000
             """
         }
         echo "✅ SonarQube analysis terminée"
