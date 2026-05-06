@@ -3,8 +3,7 @@ pipeline {
 
     environment {
         IMAGE_NAME = "rahmouta/frontend-service"
-        IMAGE_TAG = "${BUILD_NUMBER}"   // 👈 version dynamique
-            // 👈 active BuildKit
+        IMAGE_TAG = "${BUILD_NUMBER}"
     }
 
     stages {
@@ -16,10 +15,18 @@ pipeline {
             }
         }
 
+        stage('Verify Frontend') {
+            steps {
+                sh '''
+                    ls -la frontend
+                '''
+            }
+        }
+
         stage('Docker Build') {
             steps {
                 sh '''
-                    docker build -t $IMAGE_NAME:$IMAGE_TAG frontend
+                    cd frontend && docker build -t $IMAGE_NAME:$IMAGE_TAG .
                 '''
             }
         }
@@ -34,7 +41,12 @@ pipeline {
 
                     sh '''
                         echo $PASS | docker login -u $USER --password-stdin
+
                         docker push $IMAGE_NAME:$IMAGE_TAG
+
+                        docker tag $IMAGE_NAME:$IMAGE_TAG $IMAGE_NAME:latest
+                        docker push $IMAGE_NAME:latest
+
                         docker logout
                     '''
                 }
