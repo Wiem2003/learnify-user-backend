@@ -1,0 +1,142 @@
+// Jenkinsfile — Payment Service
+// Pipeline CI pour le microservice Payment
+pipeline {
+    agent any
+    
+    tools {
+        maven 'M2_HOME'
+        jdk ' JAVA_HOME'
+    }
+    
+    environment {
+        // ── Variables spécifiques au Payment Service ──
+        IMAGE_NAME = 'taher1239/payment-service'
+        IMAGE_TAG = 'latest'
+        BUILD_TAG = "${BUILD_NUMBER}"
+        DOCKER_REGISTRY = 'docker.io'
+        DOCKER_CREDS_ID = 'docker-hub-credentials'
+    }
+    
+    stages {
+        stage('1 — Checkout') {
+            steps {
+                echo '📥 Checking out Payment Service code...'
+                
+                script {
+                    // Configure Git for large repositories
+                    sh '''
+                        git config --global http.postBuffer 524288000
+                        git config --global http.lowSpeedLimit 0
+                        git config --global http.lowSpeedTime 999999
+                    '''
+                    
+                    // Checkout from payment branch
+                    checkout([
+                        $class: 'GitSCM',
+                        branches: [[name: '*/payment']],
+                        extensions: [
+                            [$class: 'CloneOption', 
+                             depth: 1, 
+                             noTags: true, 
+                             shallow: true, 
+                             timeout: 120]
+                        ],
+                        userRemoteConfigs: [[
+                            credentialsId: 'github-credentials',
+                            url: 'https://github.com/Wiem2003/learnify-user-backend.git'
+                        ]]
+                    ])
+                    
+                    env.GIT_COMMIT_SHORT = sh(script: "git rev-parse --short HEAD", returnStdout: true).trim()
+                }
+                
+                echo "✅ Code récupéré depuis GitHub — branche payment"
+                echo "✅ Commit: ${env.GIT_COMMIT_SHORT}"
+            }
+        }
+        
+        stage('2 — Build Maven') {
+            steps {
+                echo '🔨 Building Payment Service with Maven...'
+                dir('integrated/payment-service') {
+                    sh 'mvn clean compile -DskipTests'
+                    echo "✅ Build Maven terminé : payment-service"
+                }
+            }
+        }
+        
+        stage('3 — Tests') {
+            steps {
+                echo '🧪 Running tests for Payment Service...'
+                dir('integrated/payment-service') {
+                    sh 'mvn test'
+                }
+            }
+            post {
+                always {
+                    // Publier les résultats de tests dans Jenkins
+                    junit 'integrated/payment-service/target/surefire-reports/*.xml'
+                }
+                failure {
+                    error 'Tests échoués — arrêt du pipeline'
+                }
+            }
+        }
+        
+        stage('4 — Package') {
+            steps {
+                echo '📦 Packaging Payment Service...'
+                dir('integrated/payment-service') {
+                    sh 'mvn package -DskipTests'
+                    echo "✅ Package créé : payment-service/target/*.jar"
+                }
+            }
+        }
+        
+        stage('5 — Build Docker Image') {
+            steps {
+                echo '🐳 Building Docker image for Payment Service...'
+                dir('integrated/payment-service') {
+                    script {
+                        // Build avec 2 tags : latest et numéro de build
+                        sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
+                        sh "docker build -t ${IMAGE_NAME}:${BUILD_TAG} ."
+                        echo "✅ Image Docker construite : ${IMAGE_NAME}:${IMAGE_TAG}"
+                        echo "✅ Image Docker construite : ${IMAGE_NAME}:${BUILD_TAG}"
+                    }
+                }
+            }
+        }
+        
+        stage('6 — Push to Docker Hub') {
+            steps {
+                echo '📤 Pushing Payment Service image to Docker Hub...'
+                script {
+                    docker.withRegistry("https://${DOCKER_REGISTRY}", "${DOCKER_CREDS_ID}") {
+                        sh "docker push ${IMAGE_NAME}:${IMAGE_TAG}"
+                        sh "docker push ${IMAGE_NAME}:${BUILD_TAG}"
+                        echo "✅ Image publiée sur Docker Hub : ${IMAGE_NAME}:${IMAGE_TAG}"
+                        echo "✅ Image publiée sur Docker Hub : ${IMAGE_NAME}:${BUILD_TAG}"
+                    }
+                }
+            }
+        }
+    }
+    
+    post {
+        success {
+            echo "✅ Pipeline CI réussi — Payment Service"
+            echo "✅ Images disponibles sur Docker Hub :"
+            echo "   - ${IMAGE_NAME}:${IMAGE_TAG}"
+            echo "   - ${IMAGE_NAME}:${BUILD_TAG}"
+        }
+        failure {
+            echo "❌ Pipeline CI échoué — vérifier les logs ci-dessus"
+        }
+        always {
+            // Nettoyer pour libérer l'espace disque Jenkins
+            sh "docker rmi ${IMAGE_NAME}:${IMAGE_TAG} || true"
+            sh "docker rmi ${IMAGE_NAME}:${BUILD_TAG} || true"
+        }
+    }
+}
