@@ -2,68 +2,179 @@ pipeline {
   agent any
 
   environment {
+
     MS_NAME = 'club-service'
+
     IMAGE_NAME = 'rahmouta/club-service'
-    IMAGE_TAG = 'latest'
+    IMAGE_TAG = "${env.BUILD_NUMBER}"
+
+    JAVA_HOME = "/usr/lib/jvm/java-17-openjdk-amd64"
+    PATH = "${JAVA_HOME}/bin:${env.PATH}"
+
+    // SonarQube
+    SONAR_HOST_URL = "http://localhost:9000"
+    SONAR_PROJECT_KEY = "club-service"
   }
 
   stages {
 
+    // =========================
+    // Checkout
+    // =========================
     stage('Checkout') {
+
       steps {
+
         git branch: 'final-club-service',
             url: 'https://github.com/Wiem2003/learnify-user-backend.git'
       }
     }
 
+    // =========================
+    // Build Maven
+    // =========================
     stage('Build') {
+
       steps {
+
         dir("${MS_NAME}") {
+
           sh 'mvn clean package -DskipTests'
         }
       }
     }
 
+    // =========================
+    // Tests
+    // =========================
     stage('Test') {
+
       steps {
+
         dir("${MS_NAME}") {
+
           sh 'mvn test'
         }
       }
+
       post {
+
         always {
+
           junit "${MS_NAME}/target/surefire-reports/*.xml"
         }
       }
     }
 
-    stage('Build Docker') {
+    // =========================
+    // SonarQube Analysis
+    // =========================
+    stage('SonarQube Analysis') {
+
       steps {
-        dir("${MS_NAME}") {
-          sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
+
+        withCredentials([string(
+          credentialsId: 'sonar-id',
+          variable: 'SONAR_TOKEN'
+        )]) {
+
+          dir("${MS_NAME}") {
+
+            sh '''
+              mvn sonar:sonar \
+                -Dsonar.projectKey=$SONAR_PROJECT_KEY \
+                -Dsonar.host.url=$SONAR_HOST_URL \
+                -Dsonar.login=$SONAR_TOKEN
+            '''
+          }
         }
       }
     }
 
-    stage('Push Docker') {
+    // =========================
+    // Build Docker
+    // =========================
+    stage('Build Docker') {
+
       steps {
+
+        dir("${MS_NAME}") {
+
+          sh '''
+            docker build --no-cache -t $IMAGE_NAME:$IMAGE_TAG .
+
+            docker tag $IMAGE_NAME:$IMAGE_TAG $IMAGE_NAME:latest
+          '''
+        }
+      }
+    }
+
+    // =========================
+    // Push Docker Hub
+    // =========================
+    stage('Push Docker') {
+
+      steps {
+
         withCredentials([usernamePassword(
           credentialsId: 'Docker-ID',
           usernameVariable: 'DOCKER_USER',
           passwordVariable: 'DOCKER_PASS'
         )]) {
+
           sh '''
+            docker logout || true
+
             echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
-            docker push ${IMAGE_NAME}:${IMAGE_TAG}
+
+            docker push $IMAGE_NAME:$IMAGE_TAG
+            docker push $IMAGE_NAME:latest
           '''
         }
       }
     }
+
+    // =========================
+    // Deploy Kubernetes
+    // =========================
+    stage('Deploy to Kubernetes') {
+
+      steps {
+
+        sh '''
+          kubectl apply -f k8s/namespace.yaml
+
+          kubectl apply -f k8s/club-service/
+        '''
+      }
+    }
+
+    // =========================
+    // Verify Deployment
+    // =========================
+    stage('Verify Deployment') {
+
+      steps {
+
+        sh '''
+          kubectl get pods -A
+          kubectl get svc -A
+        '''
+      }
+    }
   }
 
+  // =========================
+  // Cleanup
+  // =========================
   post {
+
     always {
-      sh "docker rmi ${IMAGE_NAME}:${IMAGE_TAG} || true"
+
+      sh '''
+        docker rmi $IMAGE_NAME:$IMAGE_TAG || true
+        docker system prune -f || true
+      '''
     }
   }
 }
