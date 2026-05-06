@@ -10,7 +10,6 @@ pipeline {
     
     environment {
         // ── Variables spécifiques au Certificate Service ──
-        MS_NAME = 'certificate-service'
         IMAGE_NAME = 'taher1239/certificate-service'
         IMAGE_TAG = 'latest'
         BUILD_TAG = "${BUILD_NUMBER}"
@@ -59,9 +58,9 @@ pipeline {
         stage('2 — Build Maven') {
             steps {
                 echo '🔨 Building Certificate Service with Maven...'
-                dir("${MS_NAME}") {
+                dir('certificate-service') {
                     sh 'mvn clean compile -DskipTests'
-                    echo "✅ Build Maven terminé : ${MS_NAME}"
+                    echo "✅ Build Maven terminé : certificate-service"
                 }
             }
         }
@@ -69,14 +68,14 @@ pipeline {
         stage('3 — Tests') {
             steps {
                 echo '🧪 Running tests for Certificate Service...'
-                dir("${MS_NAME}") {
+                dir('certificate-service') {
                     sh 'mvn test'
                 }
             }
             post {
                 always {
                     // Publier les résultats de tests dans Jenkins
-                    junit "${MS_NAME}/target/surefire-reports/*.xml"
+                    junit 'certificate-service/target/surefire-reports/*.xml'
                 }
                 failure {
                     error 'Tests échoués — arrêt du pipeline'
@@ -87,9 +86,9 @@ pipeline {
         stage('4 — Package') {
             steps {
                 echo '📦 Packaging Certificate Service...'
-                dir("${MS_NAME}") {
+                dir('certificate-service') {
                     sh 'mvn package -DskipTests'
-                    echo "✅ Package créé : ${MS_NAME}/target/*.jar"
+                    echo "✅ Package créé : certificate-service/target/*.jar"
                 }
             }
         }
@@ -97,7 +96,7 @@ pipeline {
         stage('5 — Build Docker Image') {
             steps {
                 echo '🐳 Building Docker image for Certificate Service...'
-                dir("${MS_NAME}") {
+                dir('certificate-service') {
                     script {
                         // Build avec 2 tags : latest et numéro de build
                         sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
