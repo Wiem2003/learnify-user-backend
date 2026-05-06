@@ -3,17 +3,16 @@ pipeline {
 
   environment {
     MS_NAME = 'club-service'
-    IMAGE_NAME = 'YOUR_DOCKER_USERNAME/club-service'
+    IMAGE_NAME = 'rahmouta/club-service'
     IMAGE_TAG = 'latest'
-    DOCKER_CREDS = credentials('docker-hub-credentials')
   }
 
   stages {
 
     stage('Checkout') {
       steps {
-        git branch: 'main',
-            url: 'YOUR_GITHUB_REPO'
+        git branch: 'final-club-service',
+            url: 'https://github.com/Wiem2003/learnify-user-backend.git'
       }
     }
 
@@ -48,8 +47,16 @@ pipeline {
 
     stage('Push Docker') {
       steps {
-        sh "echo ${DOCKER_CREDS_PSW} | docker login -u ${DOCKER_CREDS_USR} --password-stdin"
-        sh "docker push ${IMAGE_NAME}:${IMAGE_TAG}"
+        withCredentials([usernamePassword(
+          credentialsId: 'Docker-ID',
+          usernameVariable: 'rahmouta',
+          passwordVariable: 'R'95902511'
+        )]) {
+          sh '''
+            echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
+            docker push ${IMAGE_NAME}:${IMAGE_TAG}
+          '''
+        }
       }
     }
   }
