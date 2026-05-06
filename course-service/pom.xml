@@ -72,6 +72,12 @@
             <version>8.0.0.Final</version>
         </dependency>
 
+        <!-- RabbitMQ -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-amqp</artifactId>
+        </dependency>
+
         <!-- Spring Boot test -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

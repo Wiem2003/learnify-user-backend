@@ -5,11 +5,10 @@ spring:
   application:
     name: quiz-feedback-service
 
-  # Local MySQL
   datasource:
-    url: jdbc:mysql://localhost:3306/learnify?useSSL=false&allowPublicKeyRetrieval=true&useUnicode=true&characterEncoding=utf8
-    username: root
-    password:
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/learnify?useSSL=false&allowPublicKeyRetrieval=true&useUnicode=true&characterEncoding=utf8}
+    username: ${SPRING_DATASOURCE_USERNAME:root}
+    password: ${SPRING_DATASOURCE_PASSWORD:}
     driver-class-name: com.mysql.cj.jdbc.Driver
 
   jpa:
@@ -21,16 +20,23 @@ spring:
         dialect: org.hibernate.dialect.MySQL8Dialect
         format_sql: true
 
-# Eureka pointing to localhost
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+    listener:
+      simple:
+        missing-queues-fatal: false
+
 eureka:
   client:
     service-url:
-      defaultZone: http://localhost:8761/eureka/
+      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka/}
     register-with-eureka: true
     fetch-registry: true
   instance:
-    prefer-ip-address: false
-    hostname: localhost
+    prefer-ip-address: true
     instance-id: ${spring.application.name}:${server.port}
 
 management:

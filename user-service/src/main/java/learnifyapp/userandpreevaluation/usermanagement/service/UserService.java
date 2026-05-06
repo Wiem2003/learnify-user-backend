@@ -20,8 +20,11 @@ import learnifyapp.userandpreevaluation.usermanagement.repository.PasswordResetT
 import learnifyapp.userandpreevaluation.usermanagement.repository.UnblockPinTokenRepository;
 import learnifyapp.userandpreevaluation.usermanagement.repository.UserRepository;
 import learnifyapp.userandpreevaluation.usermanagement.repository.UserSessionRepository;
+import learnifyapp.userandpreevaluation.messaging.UserEventPublisher;
+import learnifyapp.userandpreevaluation.messaging.UserRegisteredEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -53,6 +56,9 @@ public class UserService {
     private final UnblockPinTokenRepository unblockPinTokenRepository;
 
     private final DeviceService deviceService;
+
+    @Autowired(required = false)
+    private UserEventPublisher userEventPublisher;
 
     private static final int MAX_FAILED_ATTEMPTS = 3;
     private static final Duration LOCKOUT_DURATION = Duration.ofMinutes(15);
@@ -120,6 +126,17 @@ public class UserService {
             emailService.sendWelcomeEmail(savedUser.getEmail(), savedUser.getFirstName());
         } catch (Exception e) {
             e.printStackTrace();
+        }
+
+        // Publish user.registered event to RabbitMQ
+        if (userEventPublisher != null) {
+            userEventPublisher.publishUserRegistered(new UserRegisteredEvent(
+                    savedUser.getId(),
+                    savedUser.getFirstName() + " " + savedUser.getLastName(),
+                    savedUser.getEmail(),
+                    savedUser.getRole().name(),
+                    java.time.LocalDateTime.now()
+            ));
         }
 
         return savedUser;

@@ -14,9 +14,19 @@ public class RabbitMQConfig {
     public static final String PAYMENT_QUEUE       = "payment.completed.queue";
     public static final String PAYMENT_ROUTING_KEY = "payment.completed";
 
+    // Published by certificate-service after certificate generation
+    public static final String CERTIFICATE_EXCHANGE    = "certificate.exchange";
+    public static final String CERTIFICATE_ISSUED_QUEUE = "certificate.issued.queue";
+    public static final String CERTIFICATE_ISSUED_KEY  = "certificate.issued";
+
     @Bean
     public TopicExchange paymentExchange() {
         return new TopicExchange(PAYMENT_EXCHANGE);
+    }
+
+    @Bean
+    public TopicExchange certificateExchange() {
+        return new TopicExchange(CERTIFICATE_EXCHANGE);
     }
 
     @Bean
@@ -25,8 +35,18 @@ public class RabbitMQConfig {
     }
 
     @Bean
+    public Queue certificateIssuedQueue() {
+        return QueueBuilder.durable(CERTIFICATE_ISSUED_QUEUE).build();
+    }
+
+    @Bean
     public Binding paymentBinding(Queue paymentCompletedQueue, TopicExchange paymentExchange) {
         return BindingBuilder.bind(paymentCompletedQueue).to(paymentExchange).with(PAYMENT_ROUTING_KEY);
+    }
+
+    @Bean
+    public Binding certificateIssuedBinding(Queue certificateIssuedQueue, TopicExchange certificateExchange) {
+        return BindingBuilder.bind(certificateIssuedQueue).to(certificateExchange).with(CERTIFICATE_ISSUED_KEY);
     }
 
     @Bean
