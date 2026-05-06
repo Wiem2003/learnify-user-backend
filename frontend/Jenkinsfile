@@ -4,7 +4,7 @@ pipeline {
     environment {
         IMAGE_NAME = "rahmouta/frontend-service"
         IMAGE_TAG = "${BUILD_NUMBER}"   // 👈 version dynamique
-        DOCKER_BUILDKIT = '1'          // 👈 active BuildKit
+            // 👈 active BuildKit
     }
 
     stages {
