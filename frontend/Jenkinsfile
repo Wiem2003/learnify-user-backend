@@ -1,11 +1,9 @@
 pipeline {
     agent any
-
     environment {
         IMAGE_NAME = "rahmouta/frontend-service"
-        IMAGE_TAG = "${BUILD_NUMBER}"
+        IMAGE_TAG  = "${BUILD_NUMBER}"
     }
-
     stages {
 
         stage('Checkout') {
@@ -18,7 +16,15 @@ pipeline {
         stage('Verify Frontend') {
             steps {
                 sh '''
+                    echo "=== Workspace root ==="
                     ls -la frontend
+
+                    echo "=== Checking required config files ==="
+                    test -f frontend/tsconfig.json     || { echo "MISSING: tsconfig.json";     exit 1; }
+                    test -f frontend/tsconfig.app.json || { echo "MISSING: tsconfig.app.json"; exit 1; }
+                    test -f frontend/angular.json      || { echo "MISSING: angular.json";      exit 1; }
+
+                    echo "All required config files present."
                 '''
             }
         }
@@ -26,7 +32,9 @@ pipeline {
         stage('Docker Build') {
             steps {
                 sh '''
-                    cd frontend && docker build -t $IMAGE_NAME:$IMAGE_TAG .
+                    cd frontend && docker build \
+                        --label "build=${BUILD_NUMBER}" \
+                        -t $IMAGE_NAME:$IMAGE_TAG .
                 '''
             }
         }
@@ -38,15 +46,11 @@ pipeline {
                     usernameVariable: 'USER',
                     passwordVariable: 'PASS'
                 )]) {
-
                     sh '''
                         echo $PASS | docker login -u $USER --password-stdin
-
                         docker push $IMAGE_NAME:$IMAGE_TAG
-
-                        docker tag $IMAGE_NAME:$IMAGE_TAG $IMAGE_NAME:latest
+                        docker tag  $IMAGE_NAME:$IMAGE_TAG $IMAGE_NAME:latest
                         docker push $IMAGE_NAME:latest
-
                         docker logout
                     '''
                 }
