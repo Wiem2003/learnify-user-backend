@@ -70,17 +70,22 @@ pipeline {
             }
         }
 
-  stage('4 — SonarQube Analysis') {
-            steps {
-                echo '🔍 Running SonarQube analysis...'
-                dir('certificate-service') {
-                    withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
-                        sh 'mvn sonar:sonar -Dsonar.projectKey=certificate-service -Dsonar.host.url=http://localhost:9000 -Dsonar.login=$SONAR_TOKEN'
-                    }
-                }
-                echo "✅ SonarQube analysis terminée"
+stage('4 — SonarQube Analysis') {
+    steps {
+        echo '🔍 Running SonarQube analysis...'
+        dir('certificate-service') {
+            withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
+                sh """
+                    mvn sonar:sonar \\
+                        -Dsonar.projectKey=certificate-service \\
+                        "-Dsonar.host.url=http://localhost:9000" \\
+                        -Dsonar.login=\$SONAR_TOKEN
+                """
             }
         }
+        echo "✅ SonarQube analysis terminée"
+    }
+}
         
         stage('5 — Package') {
             steps {
