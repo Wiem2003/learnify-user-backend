@@ -74,14 +74,7 @@ pipeline {
             steps {
                 echo '🔍 Running SonarQube analysis...'
                 dir('certificate-service') {
-                    sh '''
-                        cat > sonar-project.properties << 'PROPS'
-sonar.projectKey=certificate-service
-sonar.host.url=http://localhost:9000
-sonar.login=sqa_25c335e29ac0d8e1b327e9a049cf69c5f0d0f06a
-PROPS
-                        mvn sonar:sonar
-                    '''
+                    sh 'mvn sonar:sonar -Dsonar.projectKey=certificate-service -Dsonar.host.url=http://localhost:9000 -Dsonar.login=sqa_062d85c996a2eb395109b7b39d2639d0fad7a7db'
                 }
                 echo "✅ SonarQube analysis terminée"
             }
