@@ -70,13 +70,16 @@ pipeline {
             }
         }
 
-   stage('4 — SonarQube Analysis') {
-    steps {
-        echo '🔍 SonarQube analysis skipped for now'
-        echo '✅ Moving to next stage'
-    }
-}
-        
+        stage('4 — SonarQube Analysis') {
+            steps {
+                echo '🔍 Running SonarQube analysis...'
+                dir('payment-service') {
+                    sh 'mvn sonar:sonar -Dsonar.projectKey=payment-service -Dsonar.host.url=http://localhost:9000 -Dsonar.login=sqa_062d85c996a2eb395109b7b39d2639d0fad7a7db'
+                }
+                echo "✅ SonarQube analysis terminée"
+            }
+        }
+
         stage('5 — Package') {
             steps {
                 echo '📦 Packaging...'
