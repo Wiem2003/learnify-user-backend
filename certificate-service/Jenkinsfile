@@ -70,7 +70,7 @@ pipeline {
             }
         }
 
-   stage('4 — SonarQube Analysis') {
+  stage('4 — SonarQube Analysis') {
     steps {
         echo '🔍 Running SonarQube analysis...'
         dir('certificate-service') {
