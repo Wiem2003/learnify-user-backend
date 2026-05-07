@@ -74,15 +74,11 @@ pipeline {
             steps {
                 echo '🔍 Running SonarQube analysis...'
                 withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
-                    script {
-                        dir('certificate-service') {
-                            writeFile file: 'sonar-project.properties', text: """
-sonar.projectKey=certificate-service
-sonar.host.url=http://localhost:9000
-sonar.login=${SONAR_TOKEN}
-"""
-                            sh 'mvn sonar:sonar'
-                        }
+                    dir('certificate-service') {
+                        sh '''
+                            printf 'sonar.projectKey=certificate-service\nsonar.host.url=http://localhost:9000\nsonar.login=%s\n' "$SONAR_TOKEN" > sonar-project.properties
+                            mvn sonar:sonar
+                        '''
                     }
                 }
                 echo "✅ SonarQube analysis terminée"
