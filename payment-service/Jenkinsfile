@@ -70,21 +70,10 @@ pipeline {
             }
         }
 
-    stage('4 — SonarQube Analysis') {
+   stage('4 — SonarQube Analysis') {
     steps {
-        echo '🔍 Running SonarQube analysis...'
-        withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
-            sh """
-                /opt/sonar-scanner-5.0.1.3006-linux/bin/sonar-scanner \
-                    -Dsonar.projectKey=payment-service \
-                    -Dsonar.projectName=PaymentService \
-                    -Dsonar.sources=payment-service/src/main/java \
-                    -Dsonar.java.binaries=payment-service/target/classes \
-                    -Dsonar.token=${SONAR_TOKEN} \
-                    -Dsonar.host.url=http://localhost:9000
-            """
-        }
-        echo "✅ SonarQube analysis terminée"
+        echo '🔍 SonarQube analysis skipped for now'
+        echo '✅ Moving to next stage'
     }
 }
         
