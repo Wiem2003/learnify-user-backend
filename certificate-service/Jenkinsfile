@@ -12,7 +12,6 @@ pipeline {
         BUILD_TAG = "${BUILD_NUMBER}"
         DOCKER_REGISTRY = 'docker.io'
         DOCKER_CREDS_ID = 'docker-hub-credentials'
-        SONAR_HOST = 'http://localhost:9000'
     }
     
     stages {
@@ -74,9 +73,16 @@ pipeline {
         stage('4 — SonarQube Analysis') {
             steps {
                 echo '🔍 Running SonarQube analysis...'
-                dir('certificate-service') {
-                    withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
-                        sh 'mvn sonar:sonar -Dsonar.projectKey=certificate-service -Dsonar.host.url=${SONAR_HOST} -Dsonar.login=${SONAR_TOKEN}'
+                withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
+                    script {
+                        dir('certificate-service') {
+                            writeFile file: 'sonar-project.properties', text: """
+sonar.projectKey=certificate-service
+sonar.host.url=http://localhost:9000
+sonar.login=${SONAR_TOKEN}
+"""
+                            sh 'mvn sonar:sonar'
+                        }
                     }
                 }
                 echo "✅ SonarQube analysis terminée"
