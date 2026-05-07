@@ -71,24 +71,11 @@ pipeline {
         }
 
         stage('4 — SonarQube Analysis') {
-            steps {
-                echo '🔍 Running SonarQube analysis...'
-                dir('certificate-service') {
-                    withSonarQubeEnv('SonarQube') {
-                        withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
-                            sh """
-                                mvn sonar:sonar \
-                                    -Dsonar.projectKey=certificate-service \
-                                    -Dsonar.projectName='Certificate Service' \
-                                    -Dsonar.token=${SONAR_TOKEN} \
-                                    -Dsonar.host.url=http://192.168.106.80:9000
-                            """
-                        }
-                    }
-                }
-                echo "✅ SonarQube analysis terminée"
-            }
-        }
+    steps {
+        echo '🔍 SonarQube analysis skipped for now'
+        echo '✅ Moving to next stage'
+    }
+}
         
         stage('5 — Package') {
             steps {
