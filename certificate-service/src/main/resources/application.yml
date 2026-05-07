@@ -5,9 +5,9 @@ spring:
   application:
     name: certificate-service
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/learnify?useSSL=false&allowPublicKeyRetrieval=true&useUnicode=true&characterEncoding=utf8}
-    username: ${SPRING_DATASOURCE_USERNAME:root}
-    password: ${SPRING_DATASOURCE_PASSWORD:}
+    url: jdbc:mysql://certificate-mysql:3306/certificate_db?createDatabaseIfNotExist=true&useUnicode=true&characterEncoding=utf8
+    username: root
+    password: root
     driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     hibernate:
@@ -17,37 +17,11 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.MySQLDialect
         format_sql: true
-  mail:
-    host: smtp.gmail.com
-    port: 587
-    username: ${EMAIL_USERNAME:tahersahbi7@gmail.com}
-    password: ${EMAIL_PASSWORD:ofswwnnicgclvatr}
-    properties:
-      mail:
-        smtp:
-          auth: true
-          starttls:
-            enable: true
-
-  rabbitmq:
-    host: ${RABBITMQ_HOST:localhost}
-    port: ${RABBITMQ_PORT:5672}
-    username: ${RABBITMQ_USERNAME:guest}
-    password: ${RABBITMQ_PASSWORD:guest}
-    virtual-host: /
-    listener:
-      simple:
-        missing-queues-fatal: false
-    template:
-      retry:
-        enabled: true
-        initial-interval: 2000
-        max-attempts: 3
 
 eureka:
   client:
     service-url:
-      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka/}
+      defaultZone: http://eureka-server:8761/eureka/
     register-with-eureka: true
     fetch-registry: true
   instance:
@@ -60,10 +34,11 @@ springdoc:
   swagger-ui:
     path: /swagger-ui.html
 
-gemini:
-  api:
-    key: AIzaSyDRjSoMWQKu7htQMlG9TWTjOEU8Nc_EvGA
-    url: https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent
-
-certificate:
-  verification-base-url: http://localhost:8083/api/certificates/verify
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    prometheus:
+      enabled: true
