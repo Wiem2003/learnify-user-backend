@@ -86,7 +86,6 @@ stage('4 — SonarQube Analysis') {
         echo "✅ SonarQube analysis terminée"
     }
 }
-        
         stage('5 — Package') {
             steps {
                 echo '📦 Packaging...'
